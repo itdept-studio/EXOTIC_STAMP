@@ -1,0 +1,4 @@
+class ConnectivityService {
+  const ConnectivityService();
+}
+

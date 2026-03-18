@@ -1,0 +1,4 @@
+class PermissionService {
+  const PermissionService();
+}
+

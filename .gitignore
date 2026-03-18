@@ -1,0 +1,23 @@
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# Flutter
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/.metadata
+mobile/build/
+mobile/.dart_tool/
+
+# Java / Gradle
+backend/.gradle/
+backend/build/
+backend/out/
+
+# Env
+.env
+*.local
+
