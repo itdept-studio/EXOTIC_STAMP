@@ -124,7 +124,11 @@ class _AuthPageState extends State<AuthPage> {
                     children: [
                       const _FieldLabel(text: 'Mật Khẩu'),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.of(context).pushNamed(
+                            AppRouter.forgotPassword,
+                          );
+                        },
                         style: TextButton.styleFrom(
                           padding: EdgeInsets.zero,
                           minimumSize: Size.zero,

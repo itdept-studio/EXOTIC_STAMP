@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../features/auth/presentation/auth_page.dart';
+import '../features/auth/presentation/forgot_password_page.dart';
 import '../features/auth/presentation/register_page.dart';
 import '../features/home/home_page.dart';
 import '../features/profile/profile_page.dart';
@@ -13,6 +14,7 @@ class AppRouter {
   static const home = '/home';
   static const auth = '/auth';
   static const register = '/register';
+  static const forgotPassword = '/forgot-password';
   static const stations = '/stations';
   static const scan = '/scan';
   static const stampBook = '/stamp-book';
@@ -25,6 +27,8 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const AuthPage());
       case register:
         return MaterialPageRoute(builder: (_) => const RegisterPage());
+      case forgotPassword:
+        return MaterialPageRoute(builder: (_) => const ForgotPasswordPage());
       case stations:
         return MaterialPageRoute(builder: (_) => const StationPage());
       case scan:
