@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../features/auth/presentation/auth_page.dart';
+import '../features/auth/presentation/register_page.dart';
 import '../features/home/home_page.dart';
 import '../features/profile/profile_page.dart';
 import '../features/rewards/rewards_page.dart';
@@ -11,6 +12,7 @@ import '../features/station/station_page.dart';
 class AppRouter {
   static const home = '/home';
   static const auth = '/auth';
+  static const register = '/register';
   static const stations = '/stations';
   static const scan = '/scan';
   static const stampBook = '/stamp-book';
@@ -21,6 +23,8 @@ class AppRouter {
     switch (settings.name) {
       case auth:
         return MaterialPageRoute(builder: (_) => const AuthPage());
+      case register:
+        return MaterialPageRoute(builder: (_) => const RegisterPage());
       case stations:
         return MaterialPageRoute(builder: (_) => const StationPage());
       case scan:
