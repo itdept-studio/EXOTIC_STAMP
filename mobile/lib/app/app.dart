@@ -12,8 +12,7 @@ class MetroStampApp extends StatelessWidget {
       title: 'Metro Stamp',
       theme: AppTheme.light(),
       onGenerateRoute: AppRouter.onGenerateRoute,
-      initialRoute: AppRouter.home,
+      initialRoute: AppRouter.auth,
     );
   }
 }
-

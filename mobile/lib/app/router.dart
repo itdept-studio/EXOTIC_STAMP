@@ -9,7 +9,7 @@ import '../features/stamp_book/stamp_book_page.dart';
 import '../features/station/station_page.dart';
 
 class AppRouter {
-  static const home = '/';
+  static const home = '/home';
   static const auth = '/auth';
   static const stations = '/stations';
   static const scan = '/scan';
@@ -32,9 +32,9 @@ class AppRouter {
       case profile:
         return MaterialPageRoute(builder: (_) => const ProfilePage());
       case home:
-      default:
         return MaterialPageRoute(builder: (_) => const HomePage());
+      default:
+        return MaterialPageRoute(builder: (_) => const AuthPage());
     }
   }
 }
-
