@@ -10,11 +10,22 @@ dependencies:
   flutter:
     sdk: flutter
   font_awesome_flutter: ^10.8.0
+  geolocator: ^13.0.2
+  mobile_scanner: ^7.2.0
+  nfc_manager: ^4.1.1
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/logo/ExoticStamp_logo.png
+  remove_alpha_ios: true
 
 flutter:
   uses-material-design: true
@@ -23,3 +34,4 @@ flutter:
     - assets/icons/
     - assets/animations/
     - assets/logo/
+    - assets/stamps/
