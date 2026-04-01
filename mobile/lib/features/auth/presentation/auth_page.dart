@@ -3,6 +3,9 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../core/utils/validators.dart';
+import '../../../core/widgets/app_notice_dialog.dart';
+import '../data/mock_auth_store.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -12,8 +15,98 @@ class AuthPage extends StatefulWidget {
 }
 
 class _AuthPageState extends State<AuthPage> {
+  final TextEditingController identifierController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+
   bool rememberMe = false;
   bool obscurePassword = true;
+  bool isSubmitting = false;
+
+  @override
+  void dispose() {
+    identifierController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _showNotice({
+    required String title,
+    required String message,
+  }) {
+    return showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AppNoticeDialog(title: title, message: message);
+      },
+    );
+  }
+
+  Future<void> _handleLogin() async {
+    if (isSubmitting) {
+      return;
+    }
+
+    final identifier = identifierController.text.trim();
+    final password = passwordController.text;
+
+    if (!Validators.isNotEmpty(identifier)) {
+      await _showNotice(
+        title: 'Thiếu tài khoản',
+        message: 'Vui lòng nhập email hoặc tên đăng nhập để tiếp tục.',
+      );
+      return;
+    }
+
+    if (!Validators.isNotEmpty(password)) {
+      await _showNotice(
+        title: 'Thiếu mật khẩu',
+        message: 'Vui lòng nhập mật khẩu trước khi đăng nhập.',
+      );
+      return;
+    }
+
+    setState(() {
+      isSubmitting = true;
+    });
+
+    await Future<void>.delayed(const Duration(milliseconds: 450));
+    final loginError = MockAuthStore.login(
+      identifier: identifier,
+      password: password,
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      isSubmitting = false;
+    });
+
+    if (loginError != null) {
+      await _showNotice(
+        title: 'Đăng nhập thất bại',
+        message: loginError,
+      );
+      return;
+    }
+
+    await _showNotice(
+      title: 'Đăng nhập thành công',
+      message: rememberMe
+          ? 'Chào mừng bạn quay lại. Phiên đăng nhập sẽ được ghi nhớ trên thiết bị này.'
+          : 'Chào mừng bạn quay lại Metro Stamp.',
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      AppRouter.home,
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -114,9 +207,10 @@ class _AuthPageState extends State<AuthPage> {
                   const SizedBox(height: 24),
                   const _FieldLabel(text: 'Email hoặc Tên Đăng Nhập'),
                   const SizedBox(height: 8),
-                  const _InputField(
+                  _InputField(
                     hintText: 'example@mail.com',
                     prefixIcon: Icons.mail_outline,
+                    controller: identifierController,
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -148,6 +242,7 @@ class _AuthPageState extends State<AuthPage> {
                   _InputField(
                     hintText: '........',
                     prefixIcon: Icons.lock_outline,
+                    controller: passwordController,
                     suffixIcon: IconButton(
                       onPressed: () {
                         setState(() {
@@ -193,8 +288,17 @@ class _AuthPageState extends State<AuthPage> {
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton(
-                      onPressed: () {},
-                      child: const Text('Đăng nhập'),
+                      onPressed: isSubmitting ? null : _handleLogin,
+                      child: isSubmitting
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.2,
+                                color: AppColors.background,
+                              ),
+                            )
+                          : const Text('Đăng nhập'),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -298,18 +402,21 @@ class _InputField extends StatelessWidget {
   const _InputField({
     required this.hintText,
     required this.prefixIcon,
+    required this.controller,
     this.suffixIcon,
     this.obscureText = false,
   });
 
   final String hintText;
   final IconData prefixIcon;
+  final TextEditingController controller;
   final Widget? suffixIcon;
   final bool obscureText;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
+      controller: controller,
       obscureText: obscureText,
       decoration: InputDecoration(
         hintText: hintText,
