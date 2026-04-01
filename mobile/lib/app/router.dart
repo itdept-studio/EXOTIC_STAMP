@@ -7,6 +7,7 @@ import '../features/home/home_page.dart';
 import '../features/profile/profile_page.dart';
 import '../features/rewards/rewards_page.dart';
 import '../features/scan/scan_page.dart';
+import '../features/settings/settings_page.dart';
 import '../features/stamp_book/stamp_book_page.dart';
 import '../features/station/station_page.dart';
 
@@ -20,9 +21,10 @@ class AppRouter {
   static const stampBook = '/stamp-book';
   static const rewards = '/rewards';
   static const profile = '/profile';
+  static const settings = '/settings';
 
-  static Route<dynamic> onGenerateRoute(RouteSettings settings) {
-    switch (settings.name) {
+  static Route<dynamic> onGenerateRoute(RouteSettings routeSettings) {
+    switch (routeSettings.name) {
       case auth:
         return MaterialPageRoute(builder: (_) => const AuthPage());
       case register:
@@ -39,6 +41,8 @@ class AppRouter {
         return MaterialPageRoute(builder: (_) => const RewardsPage());
       case profile:
         return MaterialPageRoute(builder: (_) => const ProfilePage());
+      case settings:
+        return MaterialPageRoute(builder: (_) => const SettingsPage());
       case home:
         return MaterialPageRoute(builder: (_) => const HomePage());
       default:

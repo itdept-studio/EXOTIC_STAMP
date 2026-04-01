@@ -10,6 +10,7 @@ class MetroStampApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Metro Stamp',
+      debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       onGenerateRoute: AppRouter.onGenerateRoute,
       initialRoute: AppRouter.auth,
