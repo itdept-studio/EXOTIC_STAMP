@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.metro.domain.repository;
 
+import java.util.UUID;
+
 import metro.ExoticStamp.modules.metro.domain.model.Line;
 
 import java.util.List;
@@ -11,13 +13,16 @@ public interface LineRepository {
 
     List<Line> findAllByIsActive(boolean active);
 
-    Optional<Line> findById(Integer id);
+    Optional<Line> findById(UUID id);
 
     Line save(Line line);
 
     boolean existsByCode(String code);
 
-    boolean existsByCodeAndIdNot(String code, Integer id);
+    boolean existsByCodeAndIdNot(String code, UUID id);
 
     Optional<Line> findByCode(String code);
 }
+
+
+

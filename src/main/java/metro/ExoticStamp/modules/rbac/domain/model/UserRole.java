@@ -20,8 +20,8 @@ import java.util.UUID;
 public class UserRole {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     // UUID only — không @ManyToOne User để tránh cross-module dependency
     @Column(name = "user_id", nullable = false)
@@ -31,3 +31,4 @@ public class UserRole {
     @JoinColumn(name = "role_id", nullable = false)
     private Role role;
 }
+

@@ -12,14 +12,14 @@ import java.util.List;
 import java.util.UUID;
 
 @Repository
-public interface JpaUserRoleRepository extends JpaRepository<UserRole, Integer> {
+public interface JpaUserRoleRepository extends JpaRepository<UserRole, UUID> {
 
     @EntityGraph(attributePaths = "role")
     List<UserRole> findAllByUserId(UUID userId);
 
-    boolean existsByUserIdAndRoleId(UUID userId, Integer roleId);
+    boolean existsByUserIdAndRoleId(UUID userId, UUID roleId);
 
-    void deleteByUserIdAndRoleId(UUID userId, Integer roleId);
+    void deleteByUserIdAndRoleId(UUID userId, UUID roleId);
 
     @Query("""
             SELECT COUNT(DISTINCT ur.userId) FROM UserRole ur

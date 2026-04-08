@@ -33,6 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -49,7 +50,7 @@ public class StationCommandService {
 
     @Transactional
     public StationDetailResponse createStation(CreateStationRequest req) {
-        Integer lineId = req.getLineId();
+        UUID lineId = req.getLineId();
         lineRepository.findById(lineId).orElseThrow(() -> new LineNotFoundException(lineId));
         validateSequence(lineId, req.getSequence(), null);
         validateNewStationCodes(lineId, req.getCode(), req.getNfcTagId(), req.getQrCodeToken());
@@ -79,7 +80,7 @@ public class StationCommandService {
     }
 
     @Transactional
-    public StationDetailResponse updateStation(Integer stationId, UpdateStationRequest req) {
+    public StationDetailResponse updateStation(UUID stationId, UpdateStationRequest req) {
         Station station = stationRepository.findById(stationId).orElseThrow(() -> new StationNotFoundException(stationId));
         String oldNfc = station.getNfcTagId();
         String oldQr = station.getQrCodeToken();
@@ -152,7 +153,7 @@ public class StationCommandService {
     }
 
     @Transactional
-    public StationDetailResponse activateStation(Integer stationId) {
+    public StationDetailResponse activateStation(UUID stationId) {
         Station station = stationRepository.findById(stationId).orElseThrow(() -> new StationNotFoundException(stationId));
         if (Boolean.TRUE.equals(station.getIsActive())) {
             return mapper.toStationDetail(station, true);
@@ -168,7 +169,7 @@ public class StationCommandService {
     }
 
     @Transactional
-    public StationDetailResponse deactivateStation(Integer stationId) {
+    public StationDetailResponse deactivateStation(UUID stationId) {
         Station station = stationRepository.findById(stationId).orElseThrow(() -> new StationNotFoundException(stationId));
         if (!Boolean.TRUE.equals(station.getIsActive())) {
             return mapper.toStationDetail(station, true);
@@ -184,7 +185,7 @@ public class StationCommandService {
     }
 
     @Transactional
-    public StationDetailResponse rotateQrToken(Integer stationId, RotateQrTokenRequest req) {
+    public StationDetailResponse rotateQrToken(UUID stationId, RotateQrTokenRequest req) {
         Station station = stationRepository.findById(stationId).orElseThrow(() -> new StationNotFoundException(stationId));
         String newQr = req.getQrCodeToken().trim();
         if (stationRepository.existsByQrCodeTokenAndIdNot(newQr, stationId)) {
@@ -204,7 +205,7 @@ public class StationCommandService {
     }
 
     @Transactional
-    public void incrementCollectorCount(Integer stationId) {
+    public void incrementCollectorCount(UUID stationId) {
         Station station = stationRepository.findById(stationId).orElseThrow(() -> new StationNotFoundException(stationId));
         int next = (station.getCollectorCount() == null ? 0 : station.getCollectorCount()) + 1;
         station.setCollectorCount(next);
@@ -224,7 +225,7 @@ public class StationCommandService {
     }
 
     @Transactional
-    public void softDeleteStation(Integer stationId) {
+    public void softDeleteStation(UUID stationId) {
         Station station = stationRepository.findById(stationId).orElseThrow(() -> new StationNotFoundException(stationId));
         if (Boolean.FALSE.equals(station.getIsActive())) {
             return;
@@ -239,7 +240,7 @@ public class StationCommandService {
     }
 
     @Transactional
-    public StationImageUploadResponse uploadStationImage(Integer stationId, MultipartFile file) {
+    public StationImageUploadResponse uploadStationImage(UUID stationId, MultipartFile file) {
         if (file == null) {
             throw new InvalidFileException("File is required");
         }
@@ -262,7 +263,7 @@ public class StationCommandService {
         return new StationImageUploadResponse(url);
     }
 
-    private void validateSequence(Integer lineId, Integer sequence, Integer excludeStationId) {
+    private void validateSequence(UUID lineId, Integer sequence, UUID excludeStationId) {
         if (sequence == null) {
             return;
         }
@@ -274,7 +275,7 @@ public class StationCommandService {
         }
     }
 
-    private void validateNewStationCodes(Integer lineId, String code, String nfcTagId, String qrCodeToken) {
+    private void validateNewStationCodes(UUID lineId, String code, String nfcTagId, String qrCodeToken) {
         if (stationRepository.existsByCode(code.trim())) {
             throw new DuplicateStationCodeException(code.trim(), lineId);
         }
@@ -288,7 +289,7 @@ public class StationCommandService {
         }
     }
 
-    private void bumpLineTotalStations(Integer lineId, int delta) {
+    private void bumpLineTotalStations(UUID lineId, int delta) {
         Line line = lineRepository.findById(lineId).orElseThrow(() -> new LineNotFoundException(lineId));
         int next = Math.max(0, line.getTotalStations() + delta);
         line.setTotalStations(next);

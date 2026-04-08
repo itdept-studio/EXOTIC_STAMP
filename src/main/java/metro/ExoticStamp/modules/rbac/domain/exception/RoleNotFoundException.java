@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.rbac.domain.exception;
 
+import java.util.UUID;
+
 import metro.ExoticStamp.modules.rbac.domain.model.RoleName;
 
 public class RoleNotFoundException extends RuntimeException {
@@ -8,7 +10,7 @@ public class RoleNotFoundException extends RuntimeException {
         super("Role not found with: " + roleName.name());
     }
 
-    public RoleNotFoundException(Integer id) {
+    public RoleNotFoundException(UUID id) {
         super("Role not found with id: " + id);
     }
 
@@ -17,3 +19,6 @@ public class RoleNotFoundException extends RuntimeException {
     }
 
 }
+
+
+

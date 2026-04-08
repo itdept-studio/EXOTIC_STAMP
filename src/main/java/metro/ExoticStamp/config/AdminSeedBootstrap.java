@@ -55,7 +55,7 @@ public class AdminSeedBootstrap {
                     ));
 
             UUID adminUserId = adminUser.getId();
-            Integer adminRoleId = adminRole.getId();
+            UUID adminRoleId = adminRole.getId();
 
             if (adminUserId != null && adminRoleId != null
                     && !userRoleRepository.existsByUserIdAndRoleId(adminUserId, adminRoleId)) {

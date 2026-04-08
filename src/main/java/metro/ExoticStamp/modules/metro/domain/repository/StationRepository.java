@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.metro.domain.repository;
 
+import java.util.UUID;
+
 import metro.ExoticStamp.modules.metro.domain.model.Station;
 
 import java.util.List;
@@ -7,13 +9,13 @@ import java.util.Optional;
 
 public interface StationRepository {
 
-    Optional<Station> findById(Integer id);
+    Optional<Station> findById(UUID id);
 
     Station save(Station station);
 
-    List<Station> findAllByLineId(Integer lineId);
+    List<Station> findAllByLineId(UUID lineId);
 
-    List<Station> findAllByLineIdAndIsActive(Integer lineId, boolean active);
+    List<Station> findAllByLineIdAndIsActive(UUID lineId, boolean active);
 
     List<Station> findAllStationsOrdered();
 
@@ -23,25 +25,28 @@ public interface StationRepository {
 
     Optional<Station> findByQrCodeToken(String qrCodeToken);
 
-    boolean existsByLineIdAndCode(Integer lineId, String code);
+    boolean existsByLineIdAndCode(UUID lineId, String code);
 
-    boolean existsByLineIdAndCodeAndIdNot(Integer lineId, String code, Integer id);
+    boolean existsByLineIdAndCodeAndIdNot(UUID lineId, String code, UUID id);
 
     boolean existsByCode(String code);
 
-    boolean existsByCodeAndIdNot(String code, Integer id);
+    boolean existsByCodeAndIdNot(String code, UUID id);
 
     boolean existsByNfcTagId(String nfcTagId);
 
     boolean existsByQrCodeToken(String qrToken);
 
-    boolean existsByNfcTagIdAndIdNot(String nfcTagId, Integer id);
+    boolean existsByNfcTagIdAndIdNot(String nfcTagId, UUID id);
 
-    boolean existsByQrCodeTokenAndIdNot(String qrToken, Integer id);
+    boolean existsByQrCodeTokenAndIdNot(String qrToken, UUID id);
 
-    boolean existsByLineIdAndSequence(Integer lineId, Integer sequence);
+    boolean existsByLineIdAndSequence(UUID lineId, Integer sequence);
 
-    boolean existsByLineIdAndSequenceAndIdNot(Integer lineId, Integer sequence, Integer id);
+    boolean existsByLineIdAndSequenceAndIdNot(UUID lineId, Integer sequence, UUID id);
 
     List<Object[]> findTop20StationStatsRaw();
 }
+
+
+

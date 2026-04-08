@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.rbac.application;
 
+import java.util.UUID;
+
 import metro.ExoticStamp.config.RbacProperties;
 import metro.ExoticStamp.modules.auth.application.AuditLogService;
 import metro.ExoticStamp.modules.rbac.application.support.RbacAuditIp;
@@ -47,7 +49,7 @@ public class PermissionCommandService {
     }
 
     @Transactional
-    public void assignPermissionToRole(Integer roleId, String rawPermissionCode) {
+    public void assignPermissionToRole(UUID roleId, String rawPermissionCode) {
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new RoleNotFoundException(roleId));
         String code = RbacCodeNormalizer.normalizeCode(rawPermissionCode, rbacProperties.getMaxPermissionCodeLength());
@@ -65,7 +67,7 @@ public class PermissionCommandService {
     }
 
     @Transactional
-    public void revokePermissionFromRole(Integer roleId, Integer permissionId) {
+    public void revokePermissionFromRole(UUID roleId, UUID permissionId) {
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new RoleNotFoundException(roleId));
         Permission permission = permissionRepository.findById(permissionId)
@@ -83,3 +85,6 @@ public class PermissionCommandService {
                 auditLogService.log(actorId, table, action, oldVal, newVal, RbacAuditIp.UNKNOWN)));
     }
 }
+
+
+

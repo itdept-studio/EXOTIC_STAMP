@@ -22,7 +22,7 @@ public class RoleQueryService {
     private final UserRoleRepository userRoleRepository;
 
     @Transactional(readOnly = true)
-    public RoleResponse getRoleById(Integer roleId) {
+    public RoleResponse getRoleById(UUID roleId) {
         return roleRepository.findById(roleId)
                 .map(RoleAppMapper::toRoleResponse)
                 .orElseThrow(() -> new RoleNotFoundException(roleId));
@@ -45,7 +45,7 @@ public class RoleQueryService {
     }
 
     @Transactional(readOnly = true)
-    public List<PermissionResponse> getPermissionsByRoleId(Integer roleId) {
+    public List<PermissionResponse> getPermissionsByRoleId(UUID roleId) {
         Role role = roleRepository.findByIdWithPermissions(roleId)
             .orElseThrow(() -> new RoleNotFoundException(roleId));
         return role.getRolePermissions()

@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.metro.application;
 
+import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import metro.ExoticStamp.modules.metro.application.mapper.MetroAppMapper;
 import metro.ExoticStamp.modules.metro.domain.exception.LineNotFoundException;
@@ -31,7 +33,7 @@ public class LineQueryService {
         return lines.stream().map(mapper::toLineResponse).toList();
     }
 
-    public LineDetailResponse getLineDetail(Integer lineId, boolean stationsActiveOnly) {
+    public LineDetailResponse getLineDetail(UUID lineId, boolean stationsActiveOnly) {
         Line line = lineRepository.findById(lineId).orElseThrow(() -> new LineNotFoundException(lineId));
         List<Station> stations = stationsActiveOnly
                 ? stationRepository.findAllByLineIdAndIsActive(lineId, true)
@@ -40,3 +42,6 @@ public class LineQueryService {
         return mapper.toLineDetailResponse(line, summaries);
     }
 }
+
+
+

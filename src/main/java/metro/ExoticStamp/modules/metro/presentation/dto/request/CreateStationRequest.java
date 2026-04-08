@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.metro.presentation.dto.request;
 
+import java.util.UUID;
+
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -26,7 +28,7 @@ public class CreateStationRequest {
     private String name;
 
     @NotNull
-    private Integer lineId;
+    private UUID lineId;
 
     @NotNull
     @Min(1)
@@ -50,3 +52,6 @@ public class CreateStationRequest {
     @NotNull
     private Boolean isActive;
 }
+
+
+

@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.rbac.application;
 
+import java.util.UUID;
+
 import metro.ExoticStamp.config.RbacProperties;
 import metro.ExoticStamp.modules.auth.application.AuditLogService;
 import metro.ExoticStamp.modules.rbac.application.command.AssignRoleCommand;
@@ -50,7 +52,7 @@ public class RoleCommandService {
     }
 
     @Transactional
-    public Role updateRole(Integer roleId, String rawNewCode, String description, String rawStatus) {
+    public Role updateRole(UUID roleId, String rawNewCode, String description, String rawStatus) {
         Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new RoleNotFoundException(roleId));
         Role before = snapshot(role);
@@ -151,3 +153,6 @@ public class RoleCommandService {
                 auditLogService.log(actorId, table, action, oldVal, newVal, RbacAuditIp.UNKNOWN)));
     }
 }
+
+
+

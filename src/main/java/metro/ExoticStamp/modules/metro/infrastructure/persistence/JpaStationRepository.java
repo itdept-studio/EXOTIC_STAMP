@@ -1,16 +1,18 @@
 package metro.ExoticStamp.modules.metro.infrastructure.persistence;
 
+import java.util.UUID;
+
 import metro.ExoticStamp.modules.metro.domain.model.Station;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import java.util.List;
 import java.util.Optional;
 
-public interface JpaStationRepository extends JpaRepository<Station, Integer> {
+public interface JpaStationRepository extends JpaRepository<Station, UUID> {
 
-    List<Station> findAllByLineIdOrderBySequenceAsc(Integer lineId);
+    List<Station> findAllByLineIdOrderBySequenceAsc(UUID lineId);
 
-    List<Station> findAllByLineIdAndIsActiveOrderBySequenceAsc(Integer lineId, boolean isActive);
+    List<Station> findAllByLineIdAndIsActiveOrderBySequenceAsc(UUID lineId, boolean isActive);
 
     List<Station> findAllByOrderByLineIdAscSequenceAsc();
 
@@ -20,25 +22,25 @@ public interface JpaStationRepository extends JpaRepository<Station, Integer> {
 
     Optional<Station> findByQrCodeToken(String qrCodeToken);
 
-    boolean existsByLineIdAndCode(Integer lineId, String code);
+    boolean existsByLineIdAndCode(UUID lineId, String code);
 
-    boolean existsByLineIdAndCodeAndIdNot(Integer lineId, String code, Integer id);
+    boolean existsByLineIdAndCodeAndIdNot(UUID lineId, String code, UUID id);
 
     boolean existsByCode(String code);
 
-    boolean existsByCodeAndIdNot(String code, Integer id);
+    boolean existsByCodeAndIdNot(String code, UUID id);
 
     boolean existsByNfcTagId(String nfcTagId);
 
     boolean existsByQrCodeToken(String qrToken);
 
-    boolean existsByNfcTagIdAndIdNot(String nfcTagId, Integer id);
+    boolean existsByNfcTagIdAndIdNot(String nfcTagId, UUID id);
 
-    boolean existsByQrCodeTokenAndIdNot(String qrToken, Integer id);
+    boolean existsByQrCodeTokenAndIdNot(String qrToken, UUID id);
 
-    boolean existsByLineIdAndSequence(Integer lineId, Integer sequence);
+    boolean existsByLineIdAndSequence(UUID lineId, Integer sequence);
 
-    boolean existsByLineIdAndSequenceAndIdNot(Integer lineId, Integer sequence, Integer id);
+    boolean existsByLineIdAndSequenceAndIdNot(UUID lineId, Integer sequence, UUID id);
 
     @Query(value = """
             SELECT s.id, s.name, l.name, s.collector_count
@@ -49,3 +51,6 @@ public interface JpaStationRepository extends JpaRepository<Station, Integer> {
             """, nativeQuery = true)
     List<Object[]> findTop20StationStatsRaw();
 }
+
+
+

@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.rbac.infrastructure;
 
+import java.util.UUID;
+
 import metro.ExoticStamp.modules.rbac.domain.model.RolePermission;
 import metro.ExoticStamp.modules.rbac.domain.repository.RolePermissionMappingRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,12 +19,15 @@ public class RolePermissionMappingRepositoryAdapter implements RolePermissionMap
     }
 
     @Override
-    public boolean existsByRoleIdAndPermissionId(Integer roleId, Integer permissionId) {
+    public boolean existsByRoleIdAndPermissionId(UUID roleId, UUID permissionId) {
         return jpa.existsByRole_IdAndPermission_Id(roleId, permissionId);
     }
 
     @Override
-    public void deleteByRoleIdAndPermissionId(Integer roleId, Integer permissionId) {
+    public void deleteByRoleIdAndPermissionId(UUID roleId, UUID permissionId) {
         jpa.deleteByRole_IdAndPermission_Id(roleId, permissionId);
     }
 }
+
+
+

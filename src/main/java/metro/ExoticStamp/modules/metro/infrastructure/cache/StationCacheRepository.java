@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.metro.infrastructure.cache;
 
+import java.util.UUID;
+
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import metro.ExoticStamp.config.CacheProperties;
@@ -63,7 +65,7 @@ public class StationCacheRepository extends BaseCacheRepository<StationDetailRes
     }
 
     @Override
-    public Optional<StationDetailResponse> getByStationId(Integer stationId) {
+    public Optional<StationDetailResponse> getByStationId(UUID stationId) {
         return getString(prefix() + DETAIL_SUFFIX + stationId, detailTtl);
     }
 
@@ -78,7 +80,7 @@ public class StationCacheRepository extends BaseCacheRepository<StationDetailRes
     }
 
     @Override
-    public void putByStationId(Integer stationId, StationDetailResponse value) {
+    public void putByStationId(UUID stationId, StationDetailResponse value) {
         putString(prefix() + DETAIL_SUFFIX + stationId, value, detailTtl);
     }
 
@@ -97,7 +99,7 @@ public class StationCacheRepository extends BaseCacheRepository<StationDetailRes
     }
 
     @Override
-    public void evictDetailByStationId(Integer stationId) {
+    public void evictDetailByStationId(UUID stationId) {
         if (stationId != null) {
             deleteKey(prefix() + DETAIL_SUFFIX + stationId);
         }
@@ -135,3 +137,6 @@ public class StationCacheRepository extends BaseCacheRepository<StationDetailRes
         }
     }
 }
+
+
+

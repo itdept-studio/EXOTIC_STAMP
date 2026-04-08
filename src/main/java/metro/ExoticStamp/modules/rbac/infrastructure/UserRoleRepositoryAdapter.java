@@ -26,12 +26,12 @@ public class UserRoleRepositoryAdapter implements UserRoleRepository {
     }
 
     @Override
-    public boolean existsByUserIdAndRoleId(UUID uid, Integer rid) {
+    public boolean existsByUserIdAndRoleId(UUID uid, UUID rid) {
         return jpa.existsByUserIdAndRoleId(uid, rid);
     }
 
     @Override
-    public void deleteByUserIdAndRoleId(UUID uid, Integer rid) {
+    public void deleteByUserIdAndRoleId(UUID uid, UUID rid) {
         jpa.deleteByUserIdAndRoleId(uid, rid);
     }
 

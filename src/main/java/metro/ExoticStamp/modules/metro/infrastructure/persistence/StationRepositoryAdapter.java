@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.metro.infrastructure.persistence;
 
+import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import metro.ExoticStamp.modules.metro.domain.model.Station;
 import metro.ExoticStamp.modules.metro.domain.repository.StationRepository;
@@ -15,7 +17,7 @@ public class StationRepositoryAdapter implements StationRepository {
     private final JpaStationRepository jpaStationRepository;
 
     @Override
-    public Optional<Station> findById(Integer id) {
+    public Optional<Station> findById(UUID id) {
         return jpaStationRepository.findById(id);
     }
 
@@ -25,12 +27,12 @@ public class StationRepositoryAdapter implements StationRepository {
     }
 
     @Override
-    public List<Station> findAllByLineId(Integer lineId) {
+    public List<Station> findAllByLineId(UUID lineId) {
         return jpaStationRepository.findAllByLineIdOrderBySequenceAsc(lineId);
     }
 
     @Override
-    public List<Station> findAllByLineIdAndIsActive(Integer lineId, boolean active) {
+    public List<Station> findAllByLineIdAndIsActive(UUID lineId, boolean active) {
         return jpaStationRepository.findAllByLineIdAndIsActiveOrderBySequenceAsc(lineId, active);
     }
 
@@ -55,12 +57,12 @@ public class StationRepositoryAdapter implements StationRepository {
     }
 
     @Override
-    public boolean existsByLineIdAndCode(Integer lineId, String code) {
+    public boolean existsByLineIdAndCode(UUID lineId, String code) {
         return jpaStationRepository.existsByLineIdAndCode(lineId, code);
     }
 
     @Override
-    public boolean existsByLineIdAndCodeAndIdNot(Integer lineId, String code, Integer id) {
+    public boolean existsByLineIdAndCodeAndIdNot(UUID lineId, String code, UUID id) {
         return jpaStationRepository.existsByLineIdAndCodeAndIdNot(lineId, code, id);
     }
 
@@ -70,7 +72,7 @@ public class StationRepositoryAdapter implements StationRepository {
     }
 
     @Override
-    public boolean existsByCodeAndIdNot(String code, Integer id) {
+    public boolean existsByCodeAndIdNot(String code, UUID id) {
         return jpaStationRepository.existsByCodeAndIdNot(code, id);
     }
 
@@ -85,22 +87,22 @@ public class StationRepositoryAdapter implements StationRepository {
     }
 
     @Override
-    public boolean existsByNfcTagIdAndIdNot(String nfcTagId, Integer id) {
+    public boolean existsByNfcTagIdAndIdNot(String nfcTagId, UUID id) {
         return jpaStationRepository.existsByNfcTagIdAndIdNot(nfcTagId, id);
     }
 
     @Override
-    public boolean existsByQrCodeTokenAndIdNot(String qrToken, Integer id) {
+    public boolean existsByQrCodeTokenAndIdNot(String qrToken, UUID id) {
         return jpaStationRepository.existsByQrCodeTokenAndIdNot(qrToken, id);
     }
 
     @Override
-    public boolean existsByLineIdAndSequence(Integer lineId, Integer sequence) {
+    public boolean existsByLineIdAndSequence(UUID lineId, Integer sequence) {
         return jpaStationRepository.existsByLineIdAndSequence(lineId, sequence);
     }
 
     @Override
-    public boolean existsByLineIdAndSequenceAndIdNot(Integer lineId, Integer sequence, Integer id) {
+    public boolean existsByLineIdAndSequenceAndIdNot(UUID lineId, Integer sequence, UUID id) {
         return jpaStationRepository.existsByLineIdAndSequenceAndIdNot(lineId, sequence, id);
     }
 
@@ -109,3 +111,6 @@ public class StationRepositoryAdapter implements StationRepository {
         return jpaStationRepository.findTop20StationStatsRaw();
     }
 }
+
+
+

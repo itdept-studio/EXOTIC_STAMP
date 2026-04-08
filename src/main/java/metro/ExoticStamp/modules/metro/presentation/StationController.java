@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.metro.presentation;
 
+import java.util.UUID;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -52,7 +54,7 @@ public class StationController {
     @GetMapping
     @Operation(summary = "List stations")
     public ResponseEntity<ApiResponse<List<StationResponse>>> listStations(
-            @RequestParam(required = false) Integer lineId,
+            @RequestParam(required = false) UUID lineId,
             @RequestParam(defaultValue = "true") boolean activeOnly
     ) {
         return ResponseEntity.ok(ApiResponse.ok(stationQueryService.listStations(lineId, activeOnly)));
@@ -72,7 +74,7 @@ public class StationController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get station detail")
-    public ResponseEntity<ApiResponse<StationDetailResponse>> getStationById(@PathVariable Integer id) {
+    public ResponseEntity<ApiResponse<StationDetailResponse>> getStationById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(stationQueryService.getStationDetailById(id)));
     }
 
@@ -87,7 +89,7 @@ public class StationController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update station details")
     public ResponseEntity<ApiResponse<StationDetailResponse>> updateStation(
-            @PathVariable Integer id,
+            @PathVariable UUID id,
             @Valid @RequestBody UpdateStationRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(stationCommandService.updateStation(id, request)));
     }
@@ -95,14 +97,14 @@ public class StationController {
     @PatchMapping("/{id}/activate")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Activate station")
-    public ResponseEntity<ApiResponse<StationDetailResponse>> activate(@PathVariable Integer id) {
+    public ResponseEntity<ApiResponse<StationDetailResponse>> activate(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(stationCommandService.activateStation(id)));
     }
 
     @PatchMapping("/{id}/deactivate")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Deactivate station")
-    public ResponseEntity<ApiResponse<StationDetailResponse>> deactivate(@PathVariable Integer id) {
+    public ResponseEntity<ApiResponse<StationDetailResponse>> deactivate(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.ok(stationCommandService.deactivateStation(id)));
     }
 
@@ -110,7 +112,7 @@ public class StationController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Rotate station QR token")
     public ResponseEntity<ApiResponse<StationDetailResponse>> rotateQr(
-            @PathVariable Integer id,
+            @PathVariable UUID id,
             @Valid @RequestBody RotateQrTokenRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(stationCommandService.rotateQrToken(id, request)));
     }
@@ -118,7 +120,7 @@ public class StationController {
     @PatchMapping("/{id}/collector-count")
     @PreAuthorize("hasAuthority('INTERNAL')")
     @Operation(summary = "Increment collector count (internal)")
-    public ResponseEntity<ApiResponse<Void>> incrementCollectorCount(@PathVariable Integer id) {
+    public ResponseEntity<ApiResponse<Void>> incrementCollectorCount(@PathVariable UUID id) {
         stationCommandService.incrementCollectorCount(id);
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
@@ -126,7 +128,7 @@ public class StationController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Soft-delete station")
-    public ResponseEntity<Void> softDeleteStation(@PathVariable Integer id) {
+    public ResponseEntity<Void> softDeleteStation(@PathVariable UUID id) {
         stationCommandService.softDeleteStation(id);
         return ResponseEntity.noContent().build();
     }
@@ -135,8 +137,11 @@ public class StationController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Upload station image")
     public ResponseEntity<ApiResponse<StationImageUploadResponse>> uploadStationImage(
-            @PathVariable Integer id,
+            @PathVariable UUID id,
             @RequestPart("file") MultipartFile file) {
         return ResponseEntity.ok(ApiResponse.ok(stationCommandService.uploadStationImage(id, file)));
     }
 }
+
+
+

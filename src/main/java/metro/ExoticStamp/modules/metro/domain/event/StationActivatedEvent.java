@@ -1,3 +1,8 @@
 package metro.ExoticStamp.modules.metro.domain.event;
 
-public record StationActivatedEvent(Integer stationId) {}
+import java.util.UUID;
+
+public record StationActivatedEvent(UUID stationId) {}
+
+
+

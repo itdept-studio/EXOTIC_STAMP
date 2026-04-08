@@ -5,7 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
+import java.util.UUID;
 @Entity
 @Table(name = "role_permissions",
     uniqueConstraints = @UniqueConstraint(
@@ -18,8 +18,8 @@ import lombok.NoArgsConstructor;
 public class RolePermission {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id")
@@ -29,3 +29,4 @@ public class RolePermission {
     @JoinColumn(name = "permission_id")
     private Permission permission;
 }
+

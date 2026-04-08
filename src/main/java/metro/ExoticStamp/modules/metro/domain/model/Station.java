@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.metro.domain.model;
 
+import java.util.UUID;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -24,7 +26,7 @@ import java.time.LocalDateTime;
 public class Station extends BaseEntity {
 
     @Column(name = "line_id", nullable = false)
-    private Integer lineId;
+    private UUID lineId;
 
     @Column(nullable = false, unique = true, length = 20)
     private String code;
@@ -74,4 +76,7 @@ public class Station extends BaseEntity {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }
+
+
+
 

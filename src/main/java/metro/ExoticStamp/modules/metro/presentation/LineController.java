@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.metro.presentation;
 
+import java.util.UUID;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -47,7 +49,7 @@ public class LineController {
     @GetMapping("/{id}")
     @Operation(summary = "Get metro line with station summaries")
     public ResponseEntity<ApiResponse<LineDetailResponse>> getLineById(
-            @PathVariable Integer id,
+            @PathVariable UUID id,
             @RequestParam(defaultValue = "true") boolean stationsActiveOnly
     ) {
         return ResponseEntity.ok(ApiResponse.ok(lineQueryService.getLineDetail(id, stationsActiveOnly)));
@@ -64,7 +66,7 @@ public class LineController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Update a metro line")
     public ResponseEntity<ApiResponse<LineResponse>> updateLine(
-            @PathVariable Integer id,
+            @PathVariable UUID id,
             @Valid @RequestBody UpdateLineRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(lineCommandService.updateLine(id, request)));
     }
@@ -73,8 +75,11 @@ public class LineController {
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Toggle metro line status")
     public ResponseEntity<ApiResponse<LineResponse>> toggleLineStatus(
-            @PathVariable Integer id,
+            @PathVariable UUID id,
             @Valid @RequestBody ToggleStatusRequest request) {
         return ResponseEntity.ok(ApiResponse.ok(lineCommandService.toggleLineStatus(id, request)));
     }
 }
+
+
+

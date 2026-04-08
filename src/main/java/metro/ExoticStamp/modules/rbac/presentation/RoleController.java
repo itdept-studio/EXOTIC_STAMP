@@ -53,7 +53,7 @@ public class RoleController {
     @GetMapping("/{roleId}")
     @PreAuthorize("hasRole('ADMIN') and hasAuthority('RBAC_ADMIN')")
     @Operation(summary = "Get role by id")
-    public ResponseEntity<ApiResponse<RoleResponse>> getRoleById(@PathVariable Integer roleId) {
+    public ResponseEntity<ApiResponse<RoleResponse>> getRoleById(@PathVariable UUID roleId) {
         return ResponseEntity.ok(ApiResponse.ok(queryService.getRoleById(roleId)));
     }
 
@@ -61,7 +61,7 @@ public class RoleController {
     @PreAuthorize("hasRole('ADMIN') and hasAuthority('RBAC_ADMIN')")
     @Operation(summary = "Update role")
     public ResponseEntity<ApiResponse<RoleResponse>> updateRole(
-            @PathVariable Integer roleId,
+            @PathVariable UUID roleId,
             @Valid @RequestBody UpdateRoleRequest req) {
         var role = commandService.updateRole(roleId, req.getRoleCode(), req.getDescription(), req.getStatus());
         return ResponseEntity.ok(ApiResponse.ok(RoleAppMapper.toRoleResponse(role)));
@@ -102,7 +102,7 @@ public class RoleController {
     @GetMapping("/{roleId}/permissions")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "List permissions of a role")
-    public ResponseEntity<ApiResponse<List<PermissionResponse>>> getPermissions(@PathVariable Integer roleId) {
+    public ResponseEntity<ApiResponse<List<PermissionResponse>>> getPermissions(@PathVariable UUID roleId) {
         return ResponseEntity.ok(ApiResponse.ok(queryService.getPermissionsByRoleId(roleId)));
     }
 
@@ -110,7 +110,7 @@ public class RoleController {
     @PreAuthorize("hasRole('ADMIN') and hasAuthority('RBAC_ADMIN')")
     @Operation(summary = "Assign permission to role")
     public ResponseEntity<ApiResponse<Void>> assignPermissionToRole(
-            @PathVariable Integer roleId,
+            @PathVariable UUID roleId,
             @Valid @RequestBody AssignPermissionToRoleRequest req) {
         permissionCommandService.assignPermissionToRole(roleId, req.getPermissionCode());
         return ResponseEntity.ok(ApiResponse.ok("Permission assigned to role", null));
@@ -120,9 +120,10 @@ public class RoleController {
     @PreAuthorize("hasRole('ADMIN') and hasAuthority('RBAC_ADMIN')")
     @Operation(summary = "Revoke permission from role")
     public ResponseEntity<ApiResponse<Void>> revokePermissionFromRole(
-            @PathVariable Integer roleId,
-            @PathVariable Integer permissionId) {
+            @PathVariable UUID roleId,
+            @PathVariable UUID permissionId) {
         permissionCommandService.revokePermissionFromRole(roleId, permissionId);
         return ResponseEntity.ok(ApiResponse.ok("Permission revoked from role", null));
     }
 }
+

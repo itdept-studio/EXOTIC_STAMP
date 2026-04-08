@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.metro.application;
 
+import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import metro.ExoticStamp.modules.metro.application.mapper.MetroAppMapper;
 import metro.ExoticStamp.modules.metro.domain.exception.LineNotFoundException;
@@ -40,7 +42,7 @@ public class LineCommandService {
     }
 
     @Transactional
-    public LineResponse updateLine(Integer lineId, UpdateLineRequest req) {
+    public LineResponse updateLine(UUID lineId, UpdateLineRequest req) {
         Line line = lineRepository.findById(lineId).orElseThrow(() -> new LineNotFoundException(lineId));
         if (req.getCode() != null && !req.getCode().isBlank()) {
             String code = req.getCode().trim();
@@ -61,10 +63,13 @@ public class LineCommandService {
     }
 
     @Transactional
-    public LineResponse toggleLineStatus(Integer lineId, ToggleStatusRequest req) {
+    public LineResponse toggleLineStatus(UUID lineId, ToggleStatusRequest req) {
         Line line = lineRepository.findById(lineId).orElseThrow(() -> new LineNotFoundException(lineId));
         line.setIsActive(req.getIsActive());
         line.setUpdatedAt(LocalDateTime.now());
         return mapper.toLineResponse(lineRepository.save(line));
     }
 }
+
+
+

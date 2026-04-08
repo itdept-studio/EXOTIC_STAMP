@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.metro.presentation.dto.response;
 
+import java.util.UUID;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -13,7 +15,7 @@ import java.util.List;
 @AllArgsConstructor
 public class LineDetailResponse {
 
-    private Integer id;
+    private UUID id;
     private String code;
     private String name;
     private String color;
@@ -21,3 +23,6 @@ public class LineDetailResponse {
     private boolean isActive;
     private List<StationResponse> stations;
 }
+
+
+

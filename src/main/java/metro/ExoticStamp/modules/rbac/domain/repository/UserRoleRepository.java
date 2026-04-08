@@ -11,9 +11,9 @@ public interface UserRoleRepository {
 
     List<UserRole> findAllByUserId(UUID userId);
 
-    boolean existsByUserIdAndRoleId(UUID userId, Integer roleId);
+    boolean existsByUserIdAndRoleId(UUID userId, UUID roleId);
 
-    void deleteByUserIdAndRoleId(UUID userId, Integer roleId);
+    void deleteByUserIdAndRoleId(UUID userId, UUID roleId);
 
     long countActiveUsersWithRoleCode(String normalizedRoleCode);
 

@@ -1,8 +1,10 @@
 package metro.ExoticStamp.modules.rbac.domain.exception;
 
+import java.util.UUID;
+
 public class PermissionNotFoundException extends RuntimeException {
 
-    public PermissionNotFoundException(Integer id) {
+    public PermissionNotFoundException(UUID id) {
         super("Permission not found with id: " + id);
     }
 
@@ -10,3 +12,6 @@ public class PermissionNotFoundException extends RuntimeException {
         super("Permission not found with code: " + code);
     }
 }
+
+
+

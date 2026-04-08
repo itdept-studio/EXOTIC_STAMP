@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.metro.application;
 
+import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import metro.ExoticStamp.modules.metro.application.mapper.MetroAppMapper;
 import metro.ExoticStamp.modules.metro.application.port.StationCachePort;
@@ -27,7 +29,7 @@ public class StationQueryService {
     private final StationCachePort stationCachePort;
     private final MetroAppMapper mapper;
 
-    public List<StationResponse> listStations(Integer lineId, boolean activeOnly) {
+    public List<StationResponse> listStations(UUID lineId, boolean activeOnly) {
         if (lineId != null) {
             lineRepository.findById(lineId).orElseThrow(() -> new LineNotFoundException(lineId));
             List<Station> stations = activeOnly
@@ -41,7 +43,7 @@ public class StationQueryService {
         return all.stream().map(mapper::toStationSummary).toList();
     }
 
-    public StationDetailResponse getStationDetailById(Integer stationId) {
+    public StationDetailResponse getStationDetailById(UUID stationId) {
         StationDetailResponse cached = stationCachePort.getByStationId(stationId).orElse(null);
         if (cached != null) {
             if (!cached.isActive()) {
@@ -82,7 +84,7 @@ public class StationQueryService {
     public List<StationStatsResponse> stationStats() {
         return stationRepository.findTop20StationStatsRaw().stream()
                 .map(row -> StationStatsResponse.builder()
-                        .stationId((Integer) row[0])
+                        .stationId((UUID) row[0])
                         .stationName((String) row[1])
                         .lineName((String) row[2])
                         .collectorCount(((Number) row[3]).intValue())
@@ -129,3 +131,8 @@ public class StationQueryService {
                 .build();
     }
 }
+
+
+
+
+

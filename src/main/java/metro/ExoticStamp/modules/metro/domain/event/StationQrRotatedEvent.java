@@ -1,3 +1,8 @@
 package metro.ExoticStamp.modules.metro.domain.event;
 
-public record StationQrRotatedEvent(Integer stationId, String oldQrToken, String newQrToken) {}
+import java.util.UUID;
+
+public record StationQrRotatedEvent(UUID stationId, String oldQrToken, String newQrToken) {}
+
+
+

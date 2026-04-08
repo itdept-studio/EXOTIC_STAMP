@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.metro.infrastructure.persistence;
 
+import java.util.UUID;
+
 import lombok.RequiredArgsConstructor;
 import metro.ExoticStamp.modules.metro.domain.model.Line;
 import metro.ExoticStamp.modules.metro.domain.repository.LineRepository;
@@ -25,7 +27,7 @@ public class LineRepositoryAdapter implements LineRepository {
     }
 
     @Override
-    public Optional<Line> findById(Integer id) {
+    public Optional<Line> findById(UUID id) {
         return jpaLineRepository.findById(id);
     }
 
@@ -40,7 +42,7 @@ public class LineRepositoryAdapter implements LineRepository {
     }
 
     @Override
-    public boolean existsByCodeAndIdNot(String code, Integer id) {
+    public boolean existsByCodeAndIdNot(String code, UUID id) {
         return jpaLineRepository.existsByCodeAndIdNot(code, id);
     }
 
@@ -49,3 +51,6 @@ public class LineRepositoryAdapter implements LineRepository {
         return jpaLineRepository.findByCode(code);
     }
 }
+
+
+

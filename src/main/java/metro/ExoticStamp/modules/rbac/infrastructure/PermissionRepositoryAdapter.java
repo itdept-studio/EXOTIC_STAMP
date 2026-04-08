@@ -1,5 +1,7 @@
 package metro.ExoticStamp.modules.rbac.infrastructure;
 
+import java.util.UUID;
+
 import metro.ExoticStamp.modules.rbac.domain.model.Permission;
 import metro.ExoticStamp.modules.rbac.domain.repository.PermissionRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +18,7 @@ public class PermissionRepositoryAdapter implements PermissionRepository {
     private final JpaPermissionRepository jpa;
 
     @Override
-    public Optional<Permission> findById(Integer id) {
+    public Optional<Permission> findById(UUID id) {
         return jpa.findById(id);
     }
 
@@ -40,3 +42,6 @@ public class PermissionRepositoryAdapter implements PermissionRepository {
         return jpa.save(permission);
     }
 }
+
+
+
