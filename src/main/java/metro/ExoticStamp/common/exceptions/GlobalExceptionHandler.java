@@ -13,6 +13,9 @@ import metro.ExoticStamp.modules.auth.domain.exception.UserNotActiveException;
 import metro.ExoticStamp.common.exceptions.storage.FileTooLargeException;
 import metro.ExoticStamp.common.exceptions.storage.InvalidFileException;
 import metro.ExoticStamp.common.exceptions.storage.InvalidImageTypeException;
+import metro.ExoticStamp.modules.collection.domain.exception.CampaignNotFoundException;
+import metro.ExoticStamp.modules.collection.domain.exception.InvalidStationException;
+import metro.ExoticStamp.modules.collection.domain.exception.StampAlreadyCollectedException;
 import metro.ExoticStamp.modules.metro.domain.exception.DuplicateNfcTagException;
 import metro.ExoticStamp.modules.metro.domain.exception.DuplicateQrTokenException;
 import metro.ExoticStamp.modules.metro.domain.exception.DuplicateStationCodeException;
@@ -224,6 +227,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleStationInactive(StationInactiveException ex, HttpServletRequest req) {
         log.warn("[400] {}", ex.getMessage());
         return build(400, "STATION_INACTIVE", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(StampAlreadyCollectedException.class)
+    public ResponseEntity<ErrorResponse> handleStampAlreadyCollected(StampAlreadyCollectedException ex, HttpServletRequest req) {
+        log.warn("[409] {}", ex.getMessage());
+        return build(409, "STAMP_ALREADY_COLLECTED", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(CampaignNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCampaignNotFound(CampaignNotFoundException ex, HttpServletRequest req) {
+        log.warn("[404] {}", ex.getMessage());
+        return build(404, "CAMPAIGN_NOT_FOUND", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(InvalidStationException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidStation(InvalidStationException ex, HttpServletRequest req) {
+        log.warn("[400] {}", ex.getMessage());
+        return build(400, "INVALID_STATION", ex.getMessage(), req);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

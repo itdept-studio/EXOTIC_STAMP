@@ -4,13 +4,16 @@ import java.util.UUID;
 
 import lombok.RequiredArgsConstructor;
 import metro.ExoticStamp.modules.metro.application.mapper.MetroAppMapper;
+import metro.ExoticStamp.modules.metro.domain.event.LineCreatedEvent;
 import metro.ExoticStamp.modules.metro.domain.exception.LineNotFoundException;
 import metro.ExoticStamp.modules.metro.domain.model.Line;
 import metro.ExoticStamp.modules.metro.domain.repository.LineRepository;
+import metro.ExoticStamp.modules.rbac.application.support.RbacTransactionCallbacks;
 import metro.ExoticStamp.modules.metro.presentation.dto.request.CreateLineRequest;
 import metro.ExoticStamp.modules.metro.presentation.dto.request.ToggleStatusRequest;
 import metro.ExoticStamp.modules.metro.presentation.dto.request.UpdateLineRequest;
 import metro.ExoticStamp.modules.metro.presentation.dto.response.LineResponse;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +25,7 @@ public class LineCommandService {
 
     private final LineRepository lineRepository;
     private final MetroAppMapper mapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public LineResponse createLine(CreateLineRequest req) {
@@ -38,6 +42,7 @@ public class LineCommandService {
                 .createdAt(now)
                 .build();
         Line saved = lineRepository.save(line);
+        RbacTransactionCallbacks.afterCommit(() -> eventPublisher.publishEvent(new LineCreatedEvent(saved.getId())));
         return mapper.toLineResponse(saved);
     }
 

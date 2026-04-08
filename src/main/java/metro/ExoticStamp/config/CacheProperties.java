@@ -47,6 +47,14 @@ public class CacheProperties {
         @NotNull
         @DurationMin(seconds = 1)
         private Duration metroStationScan = Duration.ofSeconds(1800);
+
+        @NotNull
+        @DurationMin(seconds = 1)
+        private Duration collectionUserStamps = Duration.ofSeconds(600);
+
+        @NotNull
+        @DurationMin(seconds = 1)
+        private Duration collectionUserProgress = Duration.ofSeconds(300);
     }
 
     /**

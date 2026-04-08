@@ -60,6 +60,8 @@ cache:
   ttl:
     station-detail: 1800s
     metro-station-scan: 1800s
+    collection-user-stamps: 600s
+    collection-user-progress: 300s
 
 storage:
   provider: local
