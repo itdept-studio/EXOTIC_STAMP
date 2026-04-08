@@ -10,6 +10,7 @@ import metro.ExoticStamp.modules.collection.application.command.CollectStampComm
 import metro.ExoticStamp.modules.collection.application.mapper.UserStampAppMapper;
 import metro.ExoticStamp.modules.collection.application.service.CollectionCommandService;
 import metro.ExoticStamp.modules.collection.application.service.CollectionQueryService;
+import metro.ExoticStamp.modules.collection.presentation.mapper.CollectionResponseMapper;
 import metro.ExoticStamp.modules.collection.presentation.request.CollectStampRequest;
 import metro.ExoticStamp.modules.collection.presentation.response.ProgressResponse;
 import metro.ExoticStamp.modules.collection.presentation.response.StampBookResponse;
@@ -39,6 +40,7 @@ public class CollectionController {
     private final CollectionCommandService commandService;
     private final CollectionQueryService queryService;
     private final UserStampAppMapper userStampAppMapper;
+    private final CollectionResponseMapper responseMapper;
 
     @PostMapping("/scan")
     @Operation(summary = "Scan station (NFC or QR) and collect stamp", security = @SecurityRequirement(name = "bearerAuth"))
@@ -68,7 +70,7 @@ public class CollectionController {
                 userStampAppMapper.resolveCollectMethod(req.getNfcTagId(), req.getQrToken())
         );
 
-        StampCollectResponse res = commandService.collectStamp(cmd);
+        StampCollectResponse res = responseMapper.toResponse(commandService.collectStamp(cmd));
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(res));
     }
 
@@ -80,7 +82,9 @@ public class CollectionController {
             @RequestParam(required = false) UUID campaignId
     ) {
         UUID userId = extractUserId(principal);
-        return ResponseEntity.ok(ApiResponse.ok(queryService.getMyStamps(userId, lineId, campaignId)));
+        return ResponseEntity.ok(ApiResponse.ok(responseMapper.toUserStampResponses(
+                queryService.getMyStamps(userId, lineId, campaignId)
+        )));
     }
 
     @GetMapping("/me/progress")
@@ -91,7 +95,8 @@ public class CollectionController {
             @RequestParam(required = false) UUID campaignId
     ) {
         UUID userId = extractUserId(principal);
-        return ResponseEntity.ok(ApiResponse.ok(queryService.getMyProgress(userId, lineId, campaignId)));
+        ProgressResponse res = responseMapper.toResponse(queryService.getMyProgress(userId, lineId, campaignId));
+        return ResponseEntity.ok(ApiResponse.ok(res));
     }
 
     @GetMapping("/me/history")
@@ -101,7 +106,7 @@ public class CollectionController {
             @RequestParam(defaultValue = "20") int limit
     ) {
         UUID userId = extractUserId(principal);
-        return ResponseEntity.ok(ApiResponse.ok(queryService.getMyHistory(userId, limit)));
+        return ResponseEntity.ok(ApiResponse.ok(responseMapper.toUserStampResponses(queryService.getMyHistory(userId, limit))));
     }
 
     @GetMapping("/me/book")
@@ -112,7 +117,8 @@ public class CollectionController {
             @RequestParam(required = false) UUID campaignId
     ) {
         UUID userId = extractUserId(principal);
-        return ResponseEntity.ok(ApiResponse.ok(queryService.getStampBook(userId, lineId, campaignId)));
+        StampBookResponse res = responseMapper.toResponse(queryService.getStampBook(userId, lineId, campaignId));
+        return ResponseEntity.ok(ApiResponse.ok(res));
     }
 
     private UUID extractUserId(UserDetails principal) {

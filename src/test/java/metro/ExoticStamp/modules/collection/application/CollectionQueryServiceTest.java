@@ -3,6 +3,9 @@ package metro.ExoticStamp.modules.collection.application;
 import metro.ExoticStamp.modules.collection.application.mapper.UserStampAppMapper;
 import metro.ExoticStamp.modules.collection.application.port.UserStampCachePort;
 import metro.ExoticStamp.modules.collection.application.service.CollectionQueryService;
+import metro.ExoticStamp.modules.collection.application.view.ProgressView;
+import metro.ExoticStamp.modules.collection.application.view.StampBookView;
+import metro.ExoticStamp.modules.collection.application.view.UserStampView;
 import metro.ExoticStamp.modules.collection.domain.model.Campaign;
 import metro.ExoticStamp.modules.collection.domain.model.CollectMethod;
 import metro.ExoticStamp.modules.collection.domain.model.StampDesign;
@@ -10,14 +13,8 @@ import metro.ExoticStamp.modules.collection.domain.model.UserStamp;
 import metro.ExoticStamp.modules.collection.domain.repository.CampaignRepository;
 import metro.ExoticStamp.modules.collection.domain.repository.StampDesignRepository;
 import metro.ExoticStamp.modules.collection.domain.repository.UserStampRepository;
-import metro.ExoticStamp.modules.collection.presentation.response.ProgressResponse;
-import metro.ExoticStamp.modules.collection.presentation.response.StampBookResponse;
-import metro.ExoticStamp.modules.collection.presentation.response.UserStampResponse;
-import metro.ExoticStamp.modules.metro.application.LineQueryService;
-import metro.ExoticStamp.modules.metro.application.StationQueryService;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.LineDetailResponse;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.StationDetailResponse;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.StationResponse;
+import metro.ExoticStamp.modules.metro.application.port.StationReadPort;
+import metro.ExoticStamp.modules.metro.application.view.MetroStationView;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,8 +42,7 @@ class CollectionQueryServiceTest {
     @Mock private CampaignRepository campaignRepository;
     @Mock private StampDesignRepository stampDesignRepository;
     @Mock private UserStampRepository userStampRepository;
-    @Mock private StationQueryService stationQueryService;
-    @Mock private LineQueryService lineQueryService;
+    @Mock private StationReadPort stationReadPort;
     @Mock private UserStampCachePort cachePort;
 
     private CollectionQueryService service;
@@ -57,8 +53,7 @@ class CollectionQueryServiceTest {
                 campaignRepository,
                 stampDesignRepository,
                 userStampRepository,
-                stationQueryService,
-                lineQueryService,
+                stationReadPort,
                 cachePort,
                 new UserStampAppMapper()
         );
@@ -72,26 +67,23 @@ class CollectionQueryServiceTest {
         when(campaignRepository.findDefaultByLineId(LINE_ID)).thenReturn(Optional.of(c));
         when(cachePort.getUserProgress(USER_ID, LINE_ID)).thenReturn(Optional.empty());
         when(userStampRepository.countDistinctStationsByUserIdAndCampaignId(USER_ID, CAMPAIGN_ID)).thenReturn(5L);
-        when(lineQueryService.getLineDetail(LINE_ID, true)).thenReturn(LineDetailResponse.builder()
-                .id(LINE_ID)
-                .stations(List.of(
-                        StationResponse.builder().id(UUID.randomUUID()).build(),
-                        StationResponse.builder().id(UUID.randomUUID()).build(),
-                        StationResponse.builder().id(UUID.randomUUID()).build(),
-                        StationResponse.builder().id(UUID.randomUUID()).build(),
-                        StationResponse.builder().id(UUID.randomUUID()).build(),
-                        StationResponse.builder().id(UUID.randomUUID()).build(),
-                        StationResponse.builder().id(UUID.randomUUID()).build(),
-                        StationResponse.builder().id(UUID.randomUUID()).build(),
-                        StationResponse.builder().id(UUID.randomUUID()).build(),
-                        StationResponse.builder().id(UUID.randomUUID()).build()
-                ))
-                .build());
+        when(stationReadPort.listActiveStationsByLineId(LINE_ID)).thenReturn(List.of(
+                MetroStationView.builder().id(UUID.randomUUID()).lineId(LINE_ID).name("S1").sequence(1).active(true).build(),
+                MetroStationView.builder().id(UUID.randomUUID()).lineId(LINE_ID).name("S2").sequence(2).active(true).build(),
+                MetroStationView.builder().id(UUID.randomUUID()).lineId(LINE_ID).name("S3").sequence(3).active(true).build(),
+                MetroStationView.builder().id(UUID.randomUUID()).lineId(LINE_ID).name("S4").sequence(4).active(true).build(),
+                MetroStationView.builder().id(UUID.randomUUID()).lineId(LINE_ID).name("S5").sequence(5).active(true).build(),
+                MetroStationView.builder().id(UUID.randomUUID()).lineId(LINE_ID).name("S6").sequence(6).active(true).build(),
+                MetroStationView.builder().id(UUID.randomUUID()).lineId(LINE_ID).name("S7").sequence(7).active(true).build(),
+                MetroStationView.builder().id(UUID.randomUUID()).lineId(LINE_ID).name("S8").sequence(8).active(true).build(),
+                MetroStationView.builder().id(UUID.randomUUID()).lineId(LINE_ID).name("S9").sequence(9).active(true).build(),
+                MetroStationView.builder().id(UUID.randomUUID()).lineId(LINE_ID).name("S10").sequence(10).active(true).build()
+        ));
 
-        ProgressResponse res = service.getMyProgress(USER_ID, LINE_ID, null);
-        assertEquals(5L, res.getCollected());
-        assertEquals(10L, res.getTotal());
-        assertEquals(50, res.getPercentage());
+        ProgressView res = service.getMyProgress(USER_ID, LINE_ID, null);
+        assertEquals(5L, res.collected());
+        assertEquals(10L, res.total());
+        assertEquals(50, res.percentage());
         verify(cachePort).putUserProgress(eq(USER_ID), eq(LINE_ID), any());
     }
 
@@ -102,13 +94,10 @@ class CollectionQueryServiceTest {
         c.setId(CAMPAIGN_ID);
         when(campaignRepository.findDefaultByLineId(LINE_ID)).thenReturn(Optional.of(c));
 
-        when(lineQueryService.getLineDetail(LINE_ID, true)).thenReturn(LineDetailResponse.builder()
-                .id(LINE_ID)
-                .stations(List.of(
-                        StationResponse.builder().id(STATION_ID).name("Central").sequence(1).build(),
-                        StationResponse.builder().id(UUID.fromString("00000000-0000-0000-0000-000000000012")).name("Next").sequence(2).build()
-                ))
-                .build());
+        when(stationReadPort.listActiveStationsByLineId(LINE_ID)).thenReturn(List.of(
+                MetroStationView.builder().id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true).build(),
+                MetroStationView.builder().id(UUID.fromString("00000000-0000-0000-0000-000000000012")).lineId(LINE_ID).name("Next").sequence(2).active(true).build()
+        ));
 
         UserStamp us = UserStamp.builder()
                 .userId(USER_ID)
@@ -137,10 +126,10 @@ class CollectionQueryServiceTest {
                     return Optional.empty();
                 });
 
-        StampBookResponse res = service.getStampBook(USER_ID, LINE_ID, null);
-        assertEquals(2, res.getStations().size());
-        assertTrue(res.getStations().get(0).isCollected());
-        assertFalse(res.getStations().get(1).isCollected());
+        StampBookView res = service.getStampBook(USER_ID, LINE_ID, null);
+        assertEquals(2, res.stations().size());
+        assertTrue(res.stations().get(0).collected());
+        assertFalse(res.stations().get(1).collected());
     }
 
     @Test
@@ -157,14 +146,14 @@ class CollectionQueryServiceTest {
                 .idempotencyKey(UUID.randomUUID().toString())
                 .build();
         when(userStampRepository.findRecentByUserId(USER_ID, 20)).thenReturn(List.of(us));
-        when(stationQueryService.getStationDetailById(STATION_ID))
-                .thenReturn(StationDetailResponse.builder().id(STATION_ID).lineId(LINE_ID).name("Central").isActive(true).build());
+        when(stationReadPort.getStationViewById(STATION_ID))
+                .thenReturn(MetroStationView.builder().id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true).build());
         when(stampDesignRepository.findById(DESIGN_ID))
                 .thenReturn(Optional.of(StampDesign.builder().name("S").artworkUrl("https://cdn/x.png").isActive(true).isLimited(false).build()));
 
-        List<UserStampResponse> res = service.getMyHistory(USER_ID, 20);
+        List<UserStampView> res = service.getMyHistory(USER_ID, 20);
         assertEquals(1, res.size());
-        assertEquals("Central", res.get(0).getStationName());
+        assertEquals("Central", res.get(0).stationName());
     }
 }
 

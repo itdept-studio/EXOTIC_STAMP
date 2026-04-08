@@ -50,7 +50,7 @@ public class UserStamp extends BaseEntity {
     private boolean gpsVerified;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "collect_method", nullable = false, length = 10)
+    @Column(name = "collect_method", nullable = false, columnDefinition = "collect_method_enum")
     private CollectMethod collectMethod;
 
     @Column(name = "device_fingerprint", nullable = false, length = 255)

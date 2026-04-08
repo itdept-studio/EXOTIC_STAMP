@@ -5,8 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import metro.ExoticStamp.config.CacheProperties;
 import metro.ExoticStamp.infra.cache.BaseCacheRepository;
 import metro.ExoticStamp.modules.collection.application.port.UserStampCachePort;
-import metro.ExoticStamp.modules.collection.presentation.response.ProgressResponse;
-import metro.ExoticStamp.modules.collection.presentation.response.UserStampResponse;
+import metro.ExoticStamp.modules.collection.application.view.ProgressView;
+import metro.ExoticStamp.modules.collection.application.view.UserStampView;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -48,12 +48,12 @@ public class UserStampCacheRepository extends BaseCacheRepository<Object> implem
     }
 
     @Override
-    public Optional<List<UserStampResponse>> getUserStamps(UUID userId, UUID lineId) {
+    public Optional<List<UserStampView>> getUserStamps(UUID userId, UUID lineId) {
         return getString(userStampsKey(userId, lineId));
     }
 
     @Override
-    public void putUserStamps(UUID userId, UUID lineId, List<UserStampResponse> value) {
+    public void putUserStamps(UUID userId, UUID lineId, List<UserStampView> value) {
         putString(userStampsKey(userId, lineId), value, userStampsTtl);
     }
 
@@ -63,11 +63,11 @@ public class UserStampCacheRepository extends BaseCacheRepository<Object> implem
     }
 
     @Override
-    public Optional<ProgressResponse> getUserProgress(UUID userId, UUID lineId) {
+    public Optional<ProgressView> getUserProgress(UUID userId, UUID lineId) {
         Object raw = getStringRaw(userProgressKey(userId, lineId));
         if (raw == null) return Optional.empty();
         try {
-            return Optional.of((ProgressResponse) raw);
+            return Optional.of((ProgressView) raw);
         } catch (Exception e) {
             meterRegistry.counter("cache.error", "domain", "collection").increment();
             log.warn("[UserStampCache] get progress failed key={}: {}", userProgressKey(userId, lineId), e.getMessage());
@@ -76,7 +76,7 @@ public class UserStampCacheRepository extends BaseCacheRepository<Object> implem
     }
 
     @Override
-    public void putUserProgress(UUID userId, UUID lineId, ProgressResponse value) {
+    public void putUserProgress(UUID userId, UUID lineId, ProgressView value) {
         putString(userProgressKey(userId, lineId), value, userProgressTtl);
     }
 
@@ -93,12 +93,12 @@ public class UserStampCacheRepository extends BaseCacheRepository<Object> implem
         return "user-progress:" + userId + ":" + lineId;
     }
 
-    private Optional<List<UserStampResponse>> getString(String key) {
+    private Optional<List<UserStampView>> getString(String key) {
         Object raw = getStringRaw(key);
         if (raw == null) return Optional.empty();
         try {
             @SuppressWarnings("unchecked")
-            List<UserStampResponse> casted = (List<UserStampResponse>) raw;
+            List<UserStampView> casted = (List<UserStampView>) raw;
             return Optional.of(casted);
         } catch (Exception e) {
             meterRegistry.counter("cache.error", "domain", "collection").increment();

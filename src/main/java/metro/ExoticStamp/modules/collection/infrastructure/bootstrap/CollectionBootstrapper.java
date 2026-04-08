@@ -4,8 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import metro.ExoticStamp.modules.collection.domain.model.Campaign;
 import metro.ExoticStamp.modules.collection.domain.repository.CampaignRepository;
-import metro.ExoticStamp.modules.metro.application.LineQueryService;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.LineResponse;
+import metro.ExoticStamp.modules.metro.application.port.LineReadPort;
+import metro.ExoticStamp.modules.metro.application.view.MetroLineView;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
@@ -19,14 +19,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CollectionBootstrapper implements ApplicationRunner {
 
-    private final LineQueryService lineQueryService;
+    private final LineReadPort lineReadPort;
     private final CampaignRepository campaignRepository;
 
     @Override
     public void run(ApplicationArguments args) {
-        List<LineResponse> activeLines = lineQueryService.getAllLines(true);
-        for (LineResponse line : activeLines) {
-            UUID lineId = line.getId();
+        List<MetroLineView> activeLines = lineReadPort.getAllActiveLines();
+        for (MetroLineView line : activeLines) {
+            UUID lineId = line.id();
             if (lineId == null) continue;
             if (campaignRepository.existsDefaultByLineId(lineId)) continue;
 
@@ -36,8 +36,8 @@ public class CollectionBootstrapper implements ApplicationRunner {
                     .isDefault(true)
                     .isActive(true)
                     .code(defaultCampaignCode(lineId))
-                    .name("Default campaign: " + line.getName())
-                    .description("Auto-created default campaign for line " + line.getCode())
+                    .name("Default campaign: " + line.name())
+                    .description("Auto-created default campaign for line " + line.code())
                     .startDate(now)
                     .endDate(now.plusYears(50))
                     .createdAt(now)

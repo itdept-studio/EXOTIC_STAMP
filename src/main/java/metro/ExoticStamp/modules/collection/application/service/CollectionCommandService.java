@@ -3,6 +3,8 @@ package metro.ExoticStamp.modules.collection.application.service;
 import lombok.RequiredArgsConstructor;
 import metro.ExoticStamp.modules.collection.application.command.CollectStampCommand;
 import metro.ExoticStamp.modules.collection.application.port.UserStampCachePort;
+import metro.ExoticStamp.modules.collection.application.view.ProgressView;
+import metro.ExoticStamp.modules.collection.application.view.StampCollectView;
 import metro.ExoticStamp.modules.collection.domain.event.StampCollectedEvent;
 import metro.ExoticStamp.modules.collection.domain.exception.CampaignNotFoundException;
 import metro.ExoticStamp.modules.collection.domain.exception.InvalidStationException;
@@ -14,10 +16,8 @@ import metro.ExoticStamp.modules.collection.domain.repository.CampaignRepository
 import metro.ExoticStamp.modules.collection.domain.repository.StampDesignRepository;
 import metro.ExoticStamp.modules.collection.domain.repository.UserStampRepository;
 import metro.ExoticStamp.modules.collection.domain.service.CollectionDomainService;
-import metro.ExoticStamp.modules.collection.presentation.response.ProgressResponse;
-import metro.ExoticStamp.modules.collection.presentation.response.StampCollectResponse;
-import metro.ExoticStamp.modules.metro.application.StationQueryService;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.StationDetailResponse;
+import metro.ExoticStamp.modules.metro.application.port.StationReadPort;
+import metro.ExoticStamp.modules.metro.application.view.MetroStationView;
 import metro.ExoticStamp.modules.rbac.application.support.RbacTransactionCallbacks;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -34,13 +34,13 @@ public class CollectionCommandService {
     private final StampDesignRepository stampDesignRepository;
     private final UserStampRepository userStampRepository;
     private final CollectionDomainService domainService;
-    private final StationQueryService stationQueryService;
+    private final StationReadPort stationReadPort;
     private final CollectionQueryService collectionQueryService;
     private final UserStampCachePort cachePort;
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
-    public StampCollectResponse collectStamp(CollectStampCommand cmd) {
+    public StampCollectView collectStamp(CollectStampCommand cmd) {
         if (cmd == null) throw new IllegalArgumentException("Missing command");
         if (cmd.userId() == null) throw new IllegalArgumentException("Missing userId");
         if (cmd.idempotencyKey() == null) throw new IllegalArgumentException("Missing idempotencyKey");
@@ -61,21 +61,21 @@ public class CollectionCommandService {
                 ? cmd.collectMethod()
                 : (hasNfc ? CollectMethod.NFC : CollectMethod.QR);
 
-        StationDetailResponse station = hasNfc
-                ? stationQueryService.resolveStationByNfc(cmd.nfcTagId())
-                : stationQueryService.resolveStationByQr(cmd.qrToken());
+        MetroStationView station = hasNfc
+                ? stationReadPort.resolveStationViewByNfc(cmd.nfcTagId())
+                : stationReadPort.resolveStationViewByQr(cmd.qrToken());
 
-        Campaign campaign = resolveCampaign(station.getLineId(), cmd.campaignId());
+        Campaign campaign = resolveCampaign(station.lineId(), cmd.campaignId());
 
-        domainService.assertNotAlreadyCollected(cmd.userId(), station.getId(), campaign.getId());
+        domainService.assertNotAlreadyCollected(cmd.userId(), station.id(), campaign.getId());
 
-        StampDesign design = stampDesignRepository.findActiveByCampaignIdAndStationId(campaign.getId(), station.getId())
-                .orElseThrow(() -> new InvalidStationException(station.getId(), "No active stamp design configured for campaign"));
+        StampDesign design = stampDesignRepository.findActiveByCampaignIdAndStationId(campaign.getId(), station.id())
+                .orElseThrow(() -> new InvalidStationException(station.id(), "No active stamp design configured for campaign"));
 
         LocalDateTime now = LocalDateTime.now();
         UserStamp toSave = UserStamp.builder()
                 .userId(cmd.userId())
-                .stationId(station.getId())
+                .stationId(station.id())
                 .campaignId(campaign.getId())
                 .stampDesignId(design.getId())
                 .collectedAt(now)
@@ -91,26 +91,26 @@ public class CollectionCommandService {
         UserStamp saved = userStampRepository.save(toSave);
 
         // Evict caches after write (done in transaction; actual Redis delete is best-effort)
-        UUID lineId = station.getLineId();
+        UUID lineId = station.lineId();
         cachePort.evictUserStamps(cmd.userId(), lineId);
         cachePort.evictUserProgress(cmd.userId(), lineId);
 
-        ProgressResponse progress = collectionQueryService.computeProgress(cmd.userId(), lineId, campaign.getId());
+        ProgressView progress = collectionQueryService.computeProgress(cmd.userId(), lineId, campaign.getId());
 
         RbacTransactionCallbacks.afterCommit(() -> eventPublisher.publishEvent(new StampCollectedEvent(
                 UUID.randomUUID(),
                 cmd.userId(),
-                station.getId(),
+                station.id(),
                 lineId,
                 campaign.getId(),
                 saved.getCollectedAt(),
                 collectMethod
         )));
 
-        return StampCollectResponse.builder()
+        return StampCollectView.builder()
                 .stampId(saved.getId())
-                .stationId(station.getId())
-                .stationName(station.getName())
+                .stationId(station.id())
+                .stationName(station.name())
                 .lineId(lineId)
                 .campaignId(campaign.getId())
                 .stampDesignUrl(design.getArtworkUrl())
@@ -129,15 +129,15 @@ public class CollectionCommandService {
                 .orElseThrow(() -> new CampaignNotFoundException(null));
     }
 
-    private StampCollectResponse buildResponse(UserStamp userStamp, boolean isNew) {
-        StationDetailResponse station = stationQueryService.getStationDetailById(userStamp.getStationId());
+    private StampCollectView buildResponse(UserStamp userStamp, boolean isNew) {
+        MetroStationView station = stationReadPort.getStationViewById(userStamp.getStationId());
         StampDesign design = stampDesignRepository.findById(userStamp.getStampDesignId()).orElse(null);
-        ProgressResponse progress = collectionQueryService.computeProgress(userStamp.getUserId(), station.getLineId(), userStamp.getCampaignId());
-        return StampCollectResponse.builder()
+        ProgressView progress = collectionQueryService.computeProgress(userStamp.getUserId(), station.lineId(), userStamp.getCampaignId());
+        return StampCollectView.builder()
                 .stampId(userStamp.getId())
-                .stationId(station.getId())
-                .stationName(station.getName())
-                .lineId(station.getLineId())
+                .stationId(station.id())
+                .stationName(station.name())
+                .lineId(station.lineId())
                 .campaignId(userStamp.getCampaignId())
                 .stampDesignUrl(design != null ? design.getArtworkUrl() : null)
                 .collectedAt(userStamp.getCollectedAt())

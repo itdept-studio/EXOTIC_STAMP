@@ -5,6 +5,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import metro.ExoticStamp.modules.metro.application.mapper.MetroAppMapper;
 import metro.ExoticStamp.modules.metro.application.port.StationCachePort;
+import metro.ExoticStamp.modules.metro.application.port.StationReadPort;
+import metro.ExoticStamp.modules.metro.application.view.MetroStationView;
 import metro.ExoticStamp.modules.metro.domain.exception.LineNotFoundException;
 import metro.ExoticStamp.modules.metro.domain.exception.StationInactiveException;
 import metro.ExoticStamp.modules.metro.domain.exception.StationNotFoundException;
@@ -22,7 +24,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class StationQueryService {
+public class StationQueryService implements StationReadPort {
 
     private final LineRepository lineRepository;
     private final StationRepository stationRepository;
@@ -109,6 +111,49 @@ public class StationQueryService {
         StationDetailResponse detail = mapper.toStationDetail(station, false);
         stationCachePort.putByQrToken(qrCodeToken, detail);
         return detail;
+    }
+
+    @Override
+    public MetroStationView resolveStationViewByNfc(String nfcTagId) {
+        Station station = stationRepository.findByNfcTagId(nfcTagId)
+                .orElseThrow(() -> new StationNotFoundException("nfcTagId", nfcTagId));
+        if (!Boolean.TRUE.equals(station.getIsActive())) {
+            throw new StationInactiveException(station.getId());
+        }
+        return toStationView(station);
+    }
+
+    @Override
+    public MetroStationView resolveStationViewByQr(String qrToken) {
+        Station station = stationRepository.findByQrCodeToken(qrToken)
+                .orElseThrow(() -> new StationNotFoundException("qrCodeToken", qrToken));
+        if (!Boolean.TRUE.equals(station.getIsActive())) {
+            throw new StationInactiveException(station.getId());
+        }
+        return toStationView(station);
+    }
+
+    @Override
+    public MetroStationView getStationViewById(UUID stationId) {
+        Station station = stationRepository.findById(stationId)
+                .orElseThrow(() -> new StationNotFoundException(stationId));
+        return toStationView(station);
+    }
+
+    @Override
+    public List<MetroStationView> listActiveStationsByLineId(UUID lineId) {
+        lineRepository.findById(lineId).orElseThrow(() -> new LineNotFoundException(lineId));
+        return stationRepository.findAllByLineIdAndIsActive(lineId, true).stream().map(this::toStationView).toList();
+    }
+
+    private MetroStationView toStationView(Station station) {
+        return MetroStationView.builder()
+                .id(station.getId())
+                .lineId(station.getLineId())
+                .name(station.getName())
+                .sequence(station.getSequence())
+                .active(Boolean.TRUE.equals(station.getIsActive()))
+                .build();
     }
 
     /** Public responses never include NFC/QR even if cache was populated incorrectly. */

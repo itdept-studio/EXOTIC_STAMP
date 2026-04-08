@@ -4,9 +4,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import metro.ExoticStamp.modules.collection.domain.model.Campaign;
 import metro.ExoticStamp.modules.collection.domain.repository.CampaignRepository;
-import metro.ExoticStamp.modules.metro.application.LineQueryService;
+import metro.ExoticStamp.modules.metro.application.port.LineReadPort;
+import metro.ExoticStamp.modules.metro.application.view.MetroLineView;
 import metro.ExoticStamp.modules.metro.domain.event.LineCreatedEvent;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.LineDetailResponse;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -20,7 +20,7 @@ import java.util.UUID;
 public class LineCreatedEventListener {
 
     private final CampaignRepository campaignRepository;
-    private final LineQueryService lineQueryService;
+    private final LineReadPort lineReadPort;
 
     @Async
     @EventListener
@@ -32,14 +32,14 @@ public class LineCreatedEventListener {
             return;
         }
 
-        LineDetailResponse line = lineQueryService.getLineDetail(lineId, true);
+        MetroLineView line = lineReadPort.getLineById(lineId);
         Campaign campaign = Campaign.builder()
                 .lineId(lineId)
                 .isDefault(true)
                 .isActive(true)
                 .code(defaultCampaignCode(lineId))
-                .name("Default campaign: " + line.getName())
-                .description("Auto-created default campaign for line " + line.getCode())
+                .name("Default campaign: " + line.name())
+                .description("Auto-created default campaign for line " + line.code())
                 .startDate(LocalDateTime.now())
                 .endDate(LocalDateTime.now().plusYears(50))
                 .createdAt(LocalDateTime.now())

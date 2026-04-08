@@ -24,8 +24,20 @@ ALTER TABLE user_stamps
 ALTER TABLE user_stamps
     RENAME COLUMN device_id TO device_fingerprint;
 
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'collect_method_enum') THEN
+        CREATE TYPE collect_method_enum AS ENUM ('NFC', 'QR');
+    END IF;
+END $$;
+
+UPDATE user_stamps
+SET collect_method = UPPER(collect_method)
+WHERE collect_method IS NOT NULL;
+
 ALTER TABLE user_stamps
-    ALTER COLUMN collect_method TYPE VARCHAR(10);
+    ALTER COLUMN collect_method TYPE collect_method_enum
+    USING collect_method::collect_method_enum;
 
 ALTER TABLE user_stamps
     ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(36);

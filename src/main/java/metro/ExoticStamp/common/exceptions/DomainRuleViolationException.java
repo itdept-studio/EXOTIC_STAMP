@@ -6,7 +6,7 @@ package metro.ExoticStamp.common.exceptions;
  * but violates business logic (e.g. cannot reactivate banned user).
  * Distinct from IllegalArgumentException (400 bad input format).
  */
-public class DomainRuleViolationException extends RuntimeException {
+public class DomainRuleViolationException extends DomainException {
 
     public DomainRuleViolationException(String message) {
         super(message);
