@@ -21,6 +21,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -32,6 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(RoleController.class)
 @Import(TestMethodSecurityConfig.class)
 class RoleControllerSecurityTest {
+    private static final UUID ADMIN_ROLE_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID MANAGER_ROLE_ID = UUID.fromString("00000000-0000-0000-0000-000000000099");
 
     @Autowired
     private MockMvc mockMvc;
@@ -64,7 +67,7 @@ class RoleControllerSecurityTest {
     @WithMockUser(authorities = "ROLE_ADMIN")
     void listRoles_withAdminRole_returns200() throws Exception {
         when(roleQueryService.getAllRoles()).thenReturn(List.of(
-                RoleResponse.builder().id(1).role("ADMIN").systemRole(true).build()));
+                RoleResponse.builder().id(ADMIN_ROLE_ID).role("ADMIN").systemRole(true).build()));
         mockMvc.perform(get("/api/v1/roles"))
                 .andExpect(status().isOk());
     }
@@ -95,7 +98,7 @@ class RoleControllerSecurityTest {
     @WithMockUser(authorities = {"ROLE_ADMIN", "RBAC_ADMIN"})
     void createRole_withRbacAdminAuthority_returns200() throws Exception {
         when(roleCommandService.createRole(anyString(), any())).thenReturn(Role.builder()
-                .id(99)
+                .id(MANAGER_ROLE_ID)
                 .role("MANAGER")
                 .status(RoleStatus.ACTIVE)
                 .systemRole(false)

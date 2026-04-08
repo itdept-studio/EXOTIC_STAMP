@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 class RoleCommandServiceTest {
 
     private static final UUID USER = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID ADMIN_ROLE_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
     @Mock
     private RoleRepository roleRepository;
@@ -49,13 +50,13 @@ class RoleCommandServiceTest {
         when(rbacProperties.getAdminRoleCode()).thenReturn("ADMIN");
         when(rbacProperties.getMaxRoleCodeLength()).thenReturn(64);
         Role admin = Role.builder()
-                .id(1)
+                .id(ADMIN_ROLE_ID)
                 .role("ADMIN")
                 .status(RoleStatus.ACTIVE)
                 .systemRole(true)
                 .build();
         when(roleRepository.findByRoleCode("ADMIN")).thenReturn(Optional.of(admin));
-        when(userRoleRepository.existsByUserIdAndRoleId(USER, 1)).thenReturn(true);
+        when(userRoleRepository.existsByUserIdAndRoleId(USER, ADMIN_ROLE_ID)).thenReturn(true);
         when(userRoleRepository.countActiveUsersWithRoleCode("ADMIN")).thenReturn(1L);
 
         assertThrows(LastAdminProtectionException.class, () -> roleCommandService.revokeRole(

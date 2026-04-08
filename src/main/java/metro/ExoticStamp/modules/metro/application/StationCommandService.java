@@ -195,12 +195,14 @@ public class StationCommandService {
         station.setQrCodeToken(newQr);
         station.setUpdatedAt(LocalDateTime.now());
         Station saved = stationRepository.save(station);
-        if (oldQr != null) {
-            stationCachePort.evictByQrToken(oldQr);
-        }
-        stationCachePort.evictDetailByStationId(saved.getId());
         RbacTransactionCallbacks.afterCommit(
-                () -> eventPublisher.publishEvent(new StationQrRotatedEvent(saved.getId(), oldQr, newQr)));
+                () -> {
+                    if (oldQr != null) {
+                        stationCachePort.evictByQrToken(oldQr);
+                    }
+                    stationCachePort.evictDetailByStationId(saved.getId());
+                    eventPublisher.publishEvent(new StationQrRotatedEvent(saved.getId(), oldQr, newQr));
+                });
         return mapper.toStationDetail(saved, true);
     }
 

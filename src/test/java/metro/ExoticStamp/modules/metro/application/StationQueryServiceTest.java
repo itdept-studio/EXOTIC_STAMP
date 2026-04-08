@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -24,6 +25,10 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class StationQueryServiceTest {
+    private static final UUID LINE_ID = UUID.fromString("00000000-0000-0000-0000-000000000101");
+    private static final UUID STATION_10 = UUID.fromString("00000000-0000-0000-0000-000000000010");
+    private static final UUID STATION_20 = UUID.fromString("00000000-0000-0000-0000-000000000020");
+    private static final UUID STATION_30 = UUID.fromString("00000000-0000-0000-0000-000000000030");
 
     @Mock
     private LineRepository lineRepository;
@@ -46,8 +51,8 @@ class StationQueryServiceTest {
     @Test
     void resolveStationByNfc_success_dbThenCaches() {
         Station station = Station.builder()
-                .id(10)
-                .lineId(1)
+                .id(STATION_10)
+                .lineId(LINE_ID)
                 .code("S10")
                 .name("Central")
                 .sequence(1)
@@ -61,7 +66,7 @@ class StationQueryServiceTest {
 
         StationDetailResponse res = service.resolveStationByNfc("NFC_10");
 
-        assertEquals(10, res.getId());
+        assertEquals(STATION_10, res.getId());
         assertEquals("Central", res.getName());
         verify(stationCachePort).putByNfcTagId(org.mockito.ArgumentMatchers.eq("NFC_10"), org.mockito.ArgumentMatchers.any());
     }
@@ -78,8 +83,8 @@ class StationQueryServiceTest {
     @Test
     void resolveStationByQr_success_dbThenCaches() {
         Station station = Station.builder()
-                .id(20)
-                .lineId(1)
+                .id(STATION_20)
+                .lineId(LINE_ID)
                 .code("S20")
                 .name("Airport")
                 .sequence(2)
@@ -93,7 +98,7 @@ class StationQueryServiceTest {
 
         StationDetailResponse res = service.resolveStationByQr("QR_20");
 
-        assertEquals(20, res.getId());
+        assertEquals(STATION_20, res.getId());
         assertEquals("Airport", res.getName());
         verify(stationCachePort).putByQrToken(org.mockito.ArgumentMatchers.eq("QR_20"), org.mockito.ArgumentMatchers.any());
     }
@@ -101,8 +106,8 @@ class StationQueryServiceTest {
     @Test
     void resolveStationByNfc_inactiveRejected() {
         Station station = Station.builder()
-                .id(30)
-                .lineId(1)
+                .id(STATION_30)
+                .lineId(LINE_ID)
                 .code("S30")
                 .name("Closed")
                 .sequence(3)

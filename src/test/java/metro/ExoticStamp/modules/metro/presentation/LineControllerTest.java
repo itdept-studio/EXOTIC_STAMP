@@ -19,6 +19,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.UUID;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -29,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(LineController.class)
 @Import(MetroWebMvcTestSecurityConfig.class)
 class LineControllerTest {
+    private static final UUID LINE_ID = UUID.fromString("00000000-0000-0000-0000-000000000101");
 
     @Autowired
     private MockMvc mockMvc;
@@ -61,7 +64,7 @@ class LineControllerTest {
     @WithMockUser(roles = "ADMIN")
     void createLine_created() throws Exception {
         when(lineCommandService.createLine(any())).thenReturn(
-                LineResponse.builder().id(1).code("L1").name("Line").isActive(true).build());
+                LineResponse.builder().id(LINE_ID).code("L1").name("Line").isActive(true).build());
 
         mockMvc.perform(
                         post("/api/v1/lines")

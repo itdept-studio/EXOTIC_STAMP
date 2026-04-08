@@ -4,25 +4,25 @@ import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import metro.ExoticStamp.common.entity.BaseEntity;
+import lombok.experimental.SuperBuilder;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 @Data
 @Entity
 @Table(name = "stations")
-@Builder
+@SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
 public class Station extends BaseEntity {
 
     @Column(name = "line_id", nullable = false)
@@ -64,17 +64,87 @@ public class Station extends BaseEntity {
     @Column(name = "is_active", nullable = false)
     private Boolean isActive;
 
-    @Column(name = "created_by", length = 255)
-    private String createdBy;
+    @PrePersist
+    public void onPrePersist() {
+        normalize();
+        validate();
+    }
 
-    @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    @PreUpdate
+    public void onPreUpdate() {
+        normalize();
+        validate();
+    }
 
-    @Column(name = "updated_by", length = 255)
-    private String updatedBy;
+    private void normalize() {
+        if (this.code != null) {
+            this.code = this.code.trim().toUpperCase();
+        }
+        if (this.name != null) {
+            this.name = this.name.trim();
+        }
+        if (this.description != null) {
+            this.description = this.description.trim();
+        }
+        if (this.historicalInfo != null) {
+            this.historicalInfo = this.historicalInfo.trim();
+        }
+        if (this.imageUrl != null) {
+            this.imageUrl = this.imageUrl.trim();
+        }
+        if (this.nfcTagId != null) {
+            this.nfcTagId = this.nfcTagId.trim();
+        }
+        if (this.qrCodeToken != null) {
+            this.qrCodeToken = this.qrCodeToken.trim();
+        }
+    }
 
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    public void validate() {
+        if (this.lineId == null) {
+            throw new IllegalArgumentException("Station lineId must not be null");
+        }
+        if (this.code == null || this.code.isBlank()) {
+            throw new IllegalArgumentException("Station code must not be blank");
+        }
+        if (this.code.length() > 20) {
+            throw new IllegalArgumentException("Station code length must be <= 20");
+        }
+        if (this.name == null || this.name.isBlank()) {
+            throw new IllegalArgumentException("Station name must not be blank");
+        }
+        if (this.name.length() > 100) {
+            throw new IllegalArgumentException("Station name length must be <= 100");
+        }
+        if (this.sequence == null || this.sequence < 1) {
+            throw new IllegalArgumentException("Station sequence must be >= 1");
+        }
+        if (this.description != null && this.description.length() > 500) {
+            throw new IllegalArgumentException("Station description length must be <= 500");
+        }
+        if (this.latitude != null
+                && (this.latitude.compareTo(BigDecimal.valueOf(-90)) < 0
+                || this.latitude.compareTo(BigDecimal.valueOf(90)) > 0)) {
+            throw new IllegalArgumentException("Station latitude must be between -90 and 90");
+        }
+        if (this.longitude != null
+                && (this.longitude.compareTo(BigDecimal.valueOf(-180)) < 0
+                || this.longitude.compareTo(BigDecimal.valueOf(180)) > 0)) {
+            throw new IllegalArgumentException("Station longitude must be between -180 and 180");
+        }
+        if (this.nfcTagId != null && this.nfcTagId.length() > 100) {
+            throw new IllegalArgumentException("Station nfcTagId length must be <= 100");
+        }
+        if (this.qrCodeToken != null && this.qrCodeToken.length() > 100) {
+            throw new IllegalArgumentException("Station qrCodeToken length must be <= 100");
+        }
+        if (this.collectorCount == null || this.collectorCount < 0) {
+            throw new IllegalArgumentException("Station collectorCount must be >= 0");
+        }
+        if (this.isActive == null) {
+            throw new IllegalArgumentException("Station isActive must not be null");
+        }
+    }
 }
 
 

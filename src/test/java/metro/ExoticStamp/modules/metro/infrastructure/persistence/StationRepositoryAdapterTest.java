@@ -9,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -16,6 +17,8 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class StationRepositoryAdapterTest {
+    private static final UUID LINE_ID = UUID.fromString("00000000-0000-0000-0000-000000000101");
+    private static final UUID STATION_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
     @Mock
     private JpaStationRepository jpaStationRepository;
@@ -25,7 +28,7 @@ class StationRepositoryAdapterTest {
 
     @Test
     void findByNfcTagId_delegatesAndReturnsSameEntity() {
-        Station station = Station.builder().id(1).nfcTagId("NFC_1").isActive(true).build();
+        Station station = Station.builder().id(STATION_ID).nfcTagId("NFC_1").isActive(true).build();
         when(jpaStationRepository.findByNfcTagId("NFC_1")).thenReturn(Optional.of(station));
 
         Optional<Station> res = adapter.findByNfcTagId("NFC_1");
@@ -36,11 +39,11 @@ class StationRepositoryAdapterTest {
 
     @Test
     void findAllByLineIdAndIsActive_ordersBySequence() {
-        Station s1 = Station.builder().id(1).sequence(1).build();
+        Station s1 = Station.builder().id(STATION_ID).sequence(1).build();
         List<Station> expected = List.of(s1);
-        when(jpaStationRepository.findAllByLineIdAndIsActiveOrderBySequenceAsc(10, true)).thenReturn(expected);
+        when(jpaStationRepository.findAllByLineIdAndIsActiveOrderBySequenceAsc(LINE_ID, true)).thenReturn(expected);
 
-        List<Station> res = adapter.findAllByLineIdAndIsActive(10, true);
+        List<Station> res = adapter.findAllByLineIdAndIsActive(LINE_ID, true);
 
         assertSame(expected, res);
     }

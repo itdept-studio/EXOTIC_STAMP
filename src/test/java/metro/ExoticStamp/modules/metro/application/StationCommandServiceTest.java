@@ -31,6 +31,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -40,6 +41,9 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class StationCommandServiceTest {
+    private static final UUID LINE_ID = UUID.fromString("00000000-0000-0000-0000-000000000101");
+    private static final UUID STATION_ID = UUID.fromString("00000000-0000-0000-0000-000000000501");
+
 
     @Mock
     private LineRepository lineRepository;
@@ -80,21 +84,21 @@ class StationCommandServiceTest {
 
     @Test
     void createStation_success() {
-        when(lineRepository.findById(1)).thenReturn(Optional.of(sampleLine()));
-        when(stationRepository.existsByLineIdAndSequence(1, 1)).thenReturn(false);
+        when(lineRepository.findById(LINE_ID)).thenReturn(Optional.of(sampleLine()));
+        when(stationRepository.existsByLineIdAndSequence(LINE_ID, 1)).thenReturn(false);
         when(stationRepository.existsByCode("S1")).thenReturn(false);
         when(stationRepository.existsByNfcTagId("NFC1")).thenReturn(false);
         when(stationRepository.existsByQrCodeToken("QR1")).thenReturn(false);
         when(stationRepository.save(any(Station.class))).thenAnswer(inv -> {
             Station s = inv.getArgument(0);
-            s.setId(99);
+            s.setId(STATION_ID);
             return s;
         });
         when(lineRepository.save(any(Line.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(mapper.toStationDetail(any(Station.class), eq(true))).thenReturn(StationDetailResponse.builder().id(99).build());
+        when(mapper.toStationDetail(any(Station.class), eq(true))).thenReturn(StationDetailResponse.builder().id(STATION_ID).build());
 
         CreateStationRequest req = CreateStationRequest.builder()
-                .lineId(1)
+                .lineId(LINE_ID)
                 .code("S1")
                 .name("Station")
                 .sequence(1)
@@ -113,22 +117,22 @@ class StationCommandServiceTest {
 
     @Test
     void createStation_lineNotFound_throws() {
-        when(lineRepository.findById(1)).thenReturn(Optional.empty());
+        when(lineRepository.findById(LINE_ID)).thenReturn(Optional.empty());
         CreateStationRequest req = CreateStationRequest.builder()
-                .lineId(1)
+                .lineId(LINE_ID)
                 .code("S1").name("N").sequence(1).isActive(true).build();
         assertThrows(LineNotFoundException.class, () -> stationCommandService.createStation(req));
     }
 
     @Test
     void createStation_duplicateNfc_throws() {
-        when(lineRepository.findById(1)).thenReturn(Optional.of(sampleLine()));
-        when(stationRepository.existsByLineIdAndSequence(1, 1)).thenReturn(false);
+        when(lineRepository.findById(LINE_ID)).thenReturn(Optional.of(sampleLine()));
+        when(stationRepository.existsByLineIdAndSequence(LINE_ID, 1)).thenReturn(false);
         when(stationRepository.existsByCode("S1")).thenReturn(false);
         when(stationRepository.existsByNfcTagId("NFC_DUP")).thenReturn(true);
 
         CreateStationRequest req = CreateStationRequest.builder()
-                .lineId(1)
+                .lineId(LINE_ID)
                 .code("S1").name("Station").sequence(1).isActive(true).nfcTagId("NFC_DUP").build();
 
         assertThrows(DuplicateNfcTagException.class, () -> stationCommandService.createStation(req));
@@ -136,41 +140,41 @@ class StationCommandServiceTest {
 
     @Test
     void updateStation_notFound_throws() {
-        when(stationRepository.findById(5)).thenReturn(Optional.empty());
+        when(stationRepository.findById(STATION_ID)).thenReturn(Optional.empty());
         assertThrows(StationNotFoundException.class,
-                () -> stationCommandService.updateStation(5, new UpdateStationRequest()));
+                () -> stationCommandService.updateStation(STATION_ID, new UpdateStationRequest()));
     }
 
     @Test
     void deactivate_evictsCachesAfterUpdate() {
         Station st = sampleStation();
-        when(stationRepository.findById(5)).thenReturn(Optional.of(st));
+        when(stationRepository.findById(STATION_ID)).thenReturn(Optional.of(st));
         when(stationRepository.save(any(Station.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(lineRepository.findById(1)).thenReturn(Optional.of(sampleLine()));
+        when(lineRepository.findById(LINE_ID)).thenReturn(Optional.of(sampleLine()));
         when(lineRepository.save(any(Line.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(mapper.toStationDetail(any(), eq(true))).thenReturn(StationDetailResponse.builder().id(5).build());
+        when(mapper.toStationDetail(any(), eq(true))).thenReturn(StationDetailResponse.builder().id(STATION_ID).build());
 
-        stationCommandService.deactivateStation(5);
+        stationCommandService.deactivateStation(STATION_ID);
 
-        verify(stationCachePort).evictDetailByStationId(5);
+        verify(stationCachePort).evictDetailByStationId(STATION_ID);
     }
 
     @Test
     void rotateQr_publishesEventAndEvictsOldToken() {
         Station st = sampleStation();
         st.setQrCodeToken("OLD_QR");
-        when(stationRepository.findById(5)).thenReturn(Optional.of(st));
-        when(stationRepository.existsByQrCodeTokenAndIdNot("NEW_QR", 5)).thenReturn(false);
+        when(stationRepository.findById(STATION_ID)).thenReturn(Optional.of(st));
+        when(stationRepository.existsByQrCodeTokenAndIdNot("NEW_QR", STATION_ID)).thenReturn(false);
         when(stationRepository.save(any(Station.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(mapper.toStationDetail(any(), eq(true))).thenReturn(StationDetailResponse.builder().id(5).build());
+        when(mapper.toStationDetail(any(), eq(true))).thenReturn(StationDetailResponse.builder().id(STATION_ID).build());
 
-        stationCommandService.rotateQrToken(5, new RotateQrTokenRequest("NEW_QR"));
+        stationCommandService.rotateQrToken(STATION_ID, new RotateQrTokenRequest("NEW_QR"));
 
         verify(stationCachePort).evictByQrToken("OLD_QR");
-        verify(stationCachePort).evictDetailByStationId(5);
+        verify(stationCachePort).evictDetailByStationId(STATION_ID);
         ArgumentCaptor<StationQrRotatedEvent> cap = ArgumentCaptor.forClass(StationQrRotatedEvent.class);
         verify(eventPublisher).publishEvent(cap.capture());
-        org.junit.jupiter.api.Assertions.assertEquals(5, cap.getValue().stationId());
+        org.junit.jupiter.api.Assertions.assertEquals(STATION_ID, cap.getValue().stationId());
         org.junit.jupiter.api.Assertions.assertEquals("OLD_QR", cap.getValue().oldQrToken());
         org.junit.jupiter.api.Assertions.assertEquals("NEW_QR", cap.getValue().newQrToken());
     }
@@ -178,7 +182,7 @@ class StationCommandServiceTest {
     @Test
     void uploadImage_invalidType_throws() {
         MockMultipartFile file = new MockMultipartFile("file", "a.gif", "image/gif", new byte[10]);
-        assertThrows(InvalidImageTypeException.class, () -> stationCommandService.uploadStationImage(5, file));
+        assertThrows(InvalidImageTypeException.class, () -> stationCommandService.uploadStationImage(STATION_ID, file));
     }
 
     @Test
@@ -186,22 +190,22 @@ class StationCommandServiceTest {
         byte[] huge = new byte[6 * 1024 * 1024];
         MockMultipartFile file = new MockMultipartFile("file", "a.jpg", "image/jpeg", huge);
         assertThrows(metro.ExoticStamp.common.exceptions.storage.FileTooLargeException.class,
-                () -> stationCommandService.uploadStationImage(5, file));
+                () -> stationCommandService.uploadStationImage(STATION_ID, file));
     }
 
     @Test
     void uploadImage_replacesOldImage_deletesOldFile() {
         Station st = sampleStation();
         st.setImageUrl("http://localhost:8080/uploads/old.jpg");
-        when(stationRepository.findById(5)).thenReturn(Optional.of(st));
+        when(stationRepository.findById(STATION_ID)).thenReturn(Optional.of(st));
         when(stationRepository.save(any(Station.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(storageService.upload(any(), eq("metro/stations/5"))).thenReturn("http://localhost:8080/uploads/new.jpg");
+        when(storageService.upload(any(), eq("metro/stations/" + STATION_ID))).thenReturn("http://localhost:8080/uploads/new.jpg");
 
         MockMultipartFile file = new MockMultipartFile("file", "a.jpg", "image/jpeg", new byte[20]);
-        stationCommandService.uploadStationImage(5, file);
+        stationCommandService.uploadStationImage(STATION_ID, file);
 
         verify(storageService).delete(eq("http://localhost:8080/uploads/old.jpg"));
-        verify(storageService).upload(any(), eq("metro/stations/5"));
+        verify(storageService).upload(any(), eq("metro/stations/" + STATION_ID));
     }
 
     @Test
@@ -209,21 +213,21 @@ class StationCommandServiceTest {
         Station st = sampleStation();
         st.setNfcTagId("NFC");
         st.setQrCodeToken("QR");
-        when(stationRepository.findById(5)).thenReturn(Optional.of(st));
-        when(lineRepository.findById(1)).thenReturn(Optional.of(sampleLine()));
+        when(stationRepository.findById(STATION_ID)).thenReturn(Optional.of(st));
+        when(lineRepository.findById(LINE_ID)).thenReturn(Optional.of(sampleLine()));
         when(lineRepository.save(any(Line.class))).thenAnswer(inv -> inv.getArgument(0));
         when(stationRepository.save(any(Station.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        stationCommandService.softDeleteStation(5);
+        stationCommandService.softDeleteStation(STATION_ID);
 
-        verify(stationCachePort).evictDetailByStationId(5);
+        verify(stationCachePort).evictDetailByStationId(STATION_ID);
         verify(stationCachePort).evictByNfcTagId("NFC");
         verify(stationCachePort).evictByQrToken("QR");
     }
 
     private static Line sampleLine() {
         return Line.builder()
-                .id(1)
+                .id(LINE_ID)
                 .code("L1")
                 .name("Line")
                 .totalStations(0)
@@ -234,8 +238,8 @@ class StationCommandServiceTest {
 
     private static Station sampleStation() {
         return Station.builder()
-                .id(5)
-                .lineId(1)
+                .id(STATION_ID)
+                .lineId(LINE_ID)
                 .code("S1")
                 .name("S")
                 .sequence(1)

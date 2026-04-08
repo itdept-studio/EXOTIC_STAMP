@@ -39,8 +39,8 @@ public class MetroLineSeeder implements CommandLineRunner {
         } else {
             line = lineRepository.save(Line.builder()
                     .code(LINE_CODE)
-                    .name("Line M1")
-                    .color("#E4002B")
+                    .name("Metro Line 1 (Ben Thanh - Suoi Tien)")
+                    .color("#1F6FB2")
                     .totalStations(0)
                     .isActive(true)
                     .createdAt(now)
@@ -86,30 +86,25 @@ public class MetroLineSeeder implements CommandLineRunner {
 
     private static List<StationSeed> stationSeeds() {
         List<StationSeed> list = new ArrayList<>();
-        String[] names = {
-                "Ga Ngã Tư Sở", "Ga Hàng Xanh", "Ga Cầu Giấy", "Ga Kim Mã", "Ga Lê Đại Hành",
-                "Ga Thành Công", "Ga Cát Linh", "Ga Yên Hòa", "Ga Phạm Hùng", "Ga Mỹ Đình",
-                "Ga Đình Công", "Ga Phùng Khoang", "Ga Hà Đông", "Ga Yên Nghĩa"
-        };
-        BigDecimal baseLat = new BigDecimal("21.0285");
-        BigDecimal baseLon = new BigDecimal("105.8542");
-        for (int i = 0; i < 14; i++) {
-            int seq = i + 1;
-            String code = String.format("M1-S%02d", seq);
-            BigDecimal lat = baseLat.add(new BigDecimal("0.001").multiply(BigDecimal.valueOf(i)));
-            BigDecimal lon = baseLon.add(new BigDecimal("0.001").multiply(BigDecimal.valueOf(i)));
-            list.add(new StationSeed(
-                    code,
-                    names[i],
-                    seq,
-                    "Seeded station " + seq,
-                    lat,
-                    lon,
-                    "M1-NFC-" + String.format("%03d", seq),
-                    "M1-QR-" + String.format("%03d", seq)
-            ));
-        }
+        list.add(new StationSeed("M1-S01", "Ben Thanh", 1, "Metro Line 1 station", bd("10.772000"), bd("106.698300"), "M1-NFC-001", "M1-QR-001"));
+        list.add(new StationSeed("M1-S02", "Opera House", 2, "Metro Line 1 station", bd("10.777560"), bd("106.703860"), "M1-NFC-002", "M1-QR-002"));
+        list.add(new StationSeed("M1-S03", "Ba Son", 3, "Metro Line 1 station", bd("10.786840"), bd("106.706270"), "M1-NFC-003", "M1-QR-003"));
+        list.add(new StationSeed("M1-S04", "Van Thanh Park", 4, "Metro Line 1 station", bd("10.801200"), bd("106.720200"), "M1-NFC-004", "M1-QR-004"));
+        list.add(new StationSeed("M1-S05", "Tan Cang", 5, "Metro Line 1 station", bd("10.808350"), bd("106.721900"), "M1-NFC-005", "M1-QR-005"));
+        list.add(new StationSeed("M1-S06", "Thao Dien", 6, "Metro Line 1 station", bd("10.801980"), bd("106.733850"), "M1-NFC-006", "M1-QR-006"));
+        list.add(new StationSeed("M1-S07", "An Phu", 7, "Metro Line 1 station", bd("10.794230"), bd("106.752640"), "M1-NFC-007", "M1-QR-007"));
+        list.add(new StationSeed("M1-S08", "Rach Chiec", 8, "Metro Line 1 station", bd("10.790720"), bd("106.771870"), "M1-NFC-008", "M1-QR-008"));
+        list.add(new StationSeed("M1-S09", "Phuoc Long", 9, "Metro Line 1 station", bd("10.799470"), bd("106.780990"), "M1-NFC-009", "M1-QR-009"));
+        list.add(new StationSeed("M1-S10", "Binh Thai", 10, "Metro Line 1 station", bd("10.808480"), bd("106.792760"), "M1-NFC-010", "M1-QR-010"));
+        list.add(new StationSeed("M1-S11", "Thu Duc", 11, "Metro Line 1 station", bd("10.818130"), bd("106.806120"), "M1-NFC-011", "M1-QR-011"));
+        list.add(new StationSeed("M1-S12", "High Tech Park", 12, "Metro Line 1 station", bd("10.841110"), bd("106.809940"), "M1-NFC-012", "M1-QR-012"));
+        list.add(new StationSeed("M1-S13", "National University", 13, "Metro Line 1 station", bd("10.870490"), bd("106.800570"), "M1-NFC-013", "M1-QR-013"));
+        list.add(new StationSeed("M1-S14", "Suoi Tien Bus Station", 14, "Metro Line 1 station", bd("10.879970"), bd("106.804590"), "M1-NFC-014", "M1-QR-014"));
         return list;
+    }
+
+    private static BigDecimal bd(String v) {
+        return new BigDecimal(v);
     }
 
     private record StationSeed(
