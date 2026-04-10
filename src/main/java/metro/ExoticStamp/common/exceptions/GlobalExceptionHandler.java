@@ -14,6 +14,8 @@ import metro.ExoticStamp.common.exceptions.storage.FileTooLargeException;
 import metro.ExoticStamp.common.exceptions.storage.InvalidFileException;
 import metro.ExoticStamp.common.exceptions.storage.InvalidImageTypeException;
 import metro.ExoticStamp.modules.collection.domain.exception.CampaignNotFoundException;
+import metro.ExoticStamp.modules.collection.domain.exception.IdempotencyKeyConflictException;
+import metro.ExoticStamp.modules.collection.domain.exception.InvalidRequestException;
 import metro.ExoticStamp.modules.collection.domain.exception.InvalidStationException;
 import metro.ExoticStamp.modules.collection.domain.exception.StampAlreadyCollectedException;
 import metro.ExoticStamp.modules.metro.domain.exception.DuplicateNfcTagException;
@@ -215,6 +217,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleEmailTaken(RoleAlreadyAssignedException ex, HttpServletRequest req) {
         log.warn("[409] {}", ex.getMessage());
         return build(409, "ROLE_ALREADY_ASSIGNED", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(InvalidRequestException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidRequest(InvalidRequestException ex, HttpServletRequest req) {
+        log.warn("[400] InvalidRequest: {}", ex.getMessage());
+        return build(400, "INVALID_REQUEST", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(IdempotencyKeyConflictException.class)
+    public ResponseEntity<ErrorResponse> handleIdempotencyConflict(IdempotencyKeyConflictException ex, HttpServletRequest req) {
+        log.warn("[409] IdempotencyKeyConflict: {}", ex.getMessage());
+        return build(409, "IDEMPOTENCY_KEY_CONFLICT", ex.getMessage(), req);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

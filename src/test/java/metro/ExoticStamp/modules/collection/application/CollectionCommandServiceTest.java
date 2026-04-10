@@ -6,6 +6,7 @@ import metro.ExoticStamp.modules.collection.application.service.CollectionComman
 import metro.ExoticStamp.modules.collection.application.service.CollectionQueryService;
 import metro.ExoticStamp.modules.collection.application.view.ProgressView;
 import metro.ExoticStamp.modules.collection.application.view.StampCollectView;
+import metro.ExoticStamp.modules.collection.config.CollectionProperties;
 import metro.ExoticStamp.modules.collection.domain.event.StampCollectedEvent;
 import metro.ExoticStamp.modules.collection.domain.exception.StampAlreadyCollectedException;
 import metro.ExoticStamp.modules.collection.domain.model.Campaign;
@@ -25,9 +26,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 
+import java.time.Clock;
+import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -54,11 +61,15 @@ class CollectionCommandServiceTest {
     @Mock private CollectionQueryService collectionQueryService;
     @Mock private UserStampCachePort cachePort;
     @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private CollectionProperties collectionProperties;
 
+    private Clock clock;
     private CollectionCommandService service;
 
     @BeforeEach
     void setUp() {
+        clock = Clock.fixed(Instant.parse("2025-06-01T12:00:00Z"), ZoneOffset.UTC);
+        when(collectionProperties.getIdempotencyWindow()).thenReturn(Duration.ofHours(1));
         service = new CollectionCommandService(
                 campaignRepository,
                 stampDesignRepository,
@@ -67,7 +78,9 @@ class CollectionCommandServiceTest {
                 stationReadPort,
                 collectionQueryService,
                 cachePort,
-                eventPublisher
+                eventPublisher,
+                collectionProperties,
+                clock
         );
     }
 
@@ -75,7 +88,7 @@ class CollectionCommandServiceTest {
     void collect_newStamp_success() {
         UUID idempotencyKey = UUID.fromString("00000000-0000-0000-0000-000000000999");
 
-        when(userStampRepository.findByIdempotencyKey(idempotencyKey.toString())).thenReturn(Optional.empty());
+        when(domainService.resolveIdempotentStamp(eq(idempotencyKey.toString()), eq(USER_ID), any())).thenReturn(Optional.empty());
         when(stationReadPort.resolveStationViewByNfc("NFC1"))
                 .thenReturn(MetroStationView.builder().id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true).build());
         Campaign campaign = Campaign.builder()
@@ -121,22 +134,21 @@ class CollectionCommandServiceTest {
         assertNotNull(res.stampId());
         assertTrue(res.isNew());
         assertEquals("Central", res.stationName());
-        verify(cachePort).evictUserStamps(USER_ID, LINE_ID);
-        verify(cachePort).evictUserProgress(USER_ID, LINE_ID);
+        verify(cachePort).evictAllForUserCollection(USER_ID, LINE_ID, CAMPAIGN_ID);
 
         ArgumentCaptor<StampCollectedEvent> cap = ArgumentCaptor.forClass(StampCollectedEvent.class);
         verify(eventPublisher).publishEvent(cap.capture());
-        assertEquals(USER_ID, cap.getValue().userId());
-        assertEquals(STATION_ID, cap.getValue().stationId());
-        assertEquals(LINE_ID, cap.getValue().lineId());
-        assertEquals(CAMPAIGN_ID, cap.getValue().campaignId());
-        assertEquals(CollectMethod.NFC, cap.getValue().collectMethod());
+        assertEquals(USER_ID, cap.getValue().getUserId());
+        assertEquals(STATION_ID, cap.getValue().getStationId());
+        assertEquals(LINE_ID, cap.getValue().getLineId());
+        assertEquals(CAMPAIGN_ID, cap.getValue().getCampaignId());
+        assertEquals(CollectMethod.NFC, cap.getValue().getCollectMethod());
     }
 
     @Test
     void collect_duplicate_throwsConflict() {
         UUID idempotencyKey = UUID.randomUUID();
-        when(userStampRepository.findByIdempotencyKey(idempotencyKey.toString())).thenReturn(Optional.empty());
+        when(domainService.resolveIdempotentStamp(eq(idempotencyKey.toString()), eq(USER_ID), any())).thenReturn(Optional.empty());
         when(stationReadPort.resolveStationViewByQr("QR1"))
                 .thenReturn(MetroStationView.builder().id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true).build());
 
@@ -167,7 +179,7 @@ class CollectionCommandServiceTest {
     @Test
     void collect_inactiveStation_rejected() {
         UUID idempotencyKey = UUID.randomUUID();
-        when(userStampRepository.findByIdempotencyKey(idempotencyKey.toString())).thenReturn(Optional.empty());
+        when(domainService.resolveIdempotentStamp(eq(idempotencyKey.toString()), eq(USER_ID), any())).thenReturn(Optional.empty());
         when(stationReadPort.resolveStationViewByNfc("NFC_INACTIVE"))
                 .thenThrow(new StationInactiveException(STATION_ID));
 
@@ -195,7 +207,7 @@ class CollectionCommandServiceTest {
                 .stationId(STATION_ID)
                 .campaignId(CAMPAIGN_ID)
                 .stampDesignId(DESIGN_ID)
-                .collectedAt(LocalDateTime.now().minusMinutes(1))
+                .collectedAt(LocalDateTime.now(clock).minusMinutes(1))
                 .gpsVerified(false)
                 .collectMethod(CollectMethod.QR)
                 .deviceFingerprint("device-fingerprint-123")
@@ -203,7 +215,7 @@ class CollectionCommandServiceTest {
                 .build();
         existing.setId(STAMP_ID);
 
-        when(userStampRepository.findByIdempotencyKey(idempotencyKey.toString())).thenReturn(Optional.of(existing));
+        when(domainService.resolveIdempotentStamp(eq(idempotencyKey.toString()), eq(USER_ID), any())).thenReturn(Optional.of(existing));
         when(stationReadPort.getStationViewById(STATION_ID))
                 .thenReturn(MetroStationView.builder().id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true).build());
         when(stampDesignRepository.findById(DESIGN_ID))
@@ -229,5 +241,76 @@ class CollectionCommandServiceTest {
         verify(userStampRepository, never()).save(any());
         verify(eventPublisher, never()).publishEvent(any());
     }
-}
 
+    @Test
+    void collect_dataIntegrity_mapsToStampAlreadyCollected() {
+        UUID idempotencyKey = UUID.randomUUID();
+        when(domainService.resolveIdempotentStamp(eq(idempotencyKey.toString()), eq(USER_ID), any())).thenReturn(Optional.empty());
+        when(stationReadPort.resolveStationViewByNfc("NFC1"))
+                .thenReturn(MetroStationView.builder().id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true).build());
+        Campaign campaign = Campaign.builder()
+                .lineId(LINE_ID).isDefault(true).isActive(true).code("DEF").name("C")
+                .startDate(LocalDateTime.now()).endDate(LocalDateTime.now().plusDays(1)).build();
+        campaign.setId(CAMPAIGN_ID);
+        when(campaignRepository.findDefaultByLineId(LINE_ID)).thenReturn(Optional.of(campaign));
+        StampDesign design = StampDesign.builder().campaignId(CAMPAIGN_ID).stationId(STATION_ID).name("S").artworkUrl("https://cdn/x.png").isActive(true).isLimited(false).build();
+        design.setId(DESIGN_ID);
+        when(stampDesignRepository.findActiveByCampaignIdAndStationId(CAMPAIGN_ID, STATION_ID)).thenReturn(Optional.of(design));
+
+        when(userStampRepository.save(any(UserStamp.class))).thenThrow(
+                new DataIntegrityViolationException("duplicate", new RuntimeException("uq_user_stamps_collect")));
+
+        CollectStampCommand cmd = new CollectStampCommand(
+                USER_ID,
+                idempotencyKey,
+                "NFC1",
+                null,
+                null,
+                "fp",
+                null,
+                null,
+                CollectMethod.NFC
+        );
+
+        assertThrows(StampAlreadyCollectedException.class, () -> service.collectStamp(cmd));
+    }
+
+    @Test
+    void collect_eventPublishFailure_stillSucceeds() {
+        UUID idempotencyKey = UUID.randomUUID();
+        when(domainService.resolveIdempotentStamp(anyString(), eq(USER_ID), any())).thenReturn(Optional.empty());
+        when(stationReadPort.resolveStationViewByNfc("NFC1"))
+                .thenReturn(MetroStationView.builder().id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true).build());
+        Campaign campaign = Campaign.builder()
+                .lineId(LINE_ID).isDefault(true).isActive(true).code("DEF").name("C")
+                .startDate(LocalDateTime.now()).endDate(LocalDateTime.now().plusDays(1)).build();
+        campaign.setId(CAMPAIGN_ID);
+        when(campaignRepository.findDefaultByLineId(LINE_ID)).thenReturn(Optional.of(campaign));
+        StampDesign design = StampDesign.builder().campaignId(CAMPAIGN_ID).stationId(STATION_ID).name("S").artworkUrl("u").isActive(true).isLimited(false).build();
+        design.setId(DESIGN_ID);
+        when(stampDesignRepository.findActiveByCampaignIdAndStationId(CAMPAIGN_ID, STATION_ID)).thenReturn(Optional.of(design));
+        when(userStampRepository.save(any(UserStamp.class))).thenAnswer(inv -> {
+            UserStamp us = inv.getArgument(0);
+            us.setId(STAMP_ID);
+            return us;
+        });
+        when(collectionQueryService.computeProgress(USER_ID, LINE_ID, CAMPAIGN_ID))
+                .thenReturn(ProgressView.builder().lineId(LINE_ID).collected(1).total(10).percentage(10).build());
+
+        doThrow(new RuntimeException("broker down")).when(eventPublisher).publishEvent(any(ApplicationEvent.class));
+
+        CollectStampCommand cmd = new CollectStampCommand(
+                USER_ID,
+                idempotencyKey,
+                "NFC1",
+                null,
+                null,
+                "fp",
+                null,
+                null,
+                CollectMethod.NFC
+        );
+
+        assertDoesNotThrow(() -> service.collectStamp(cmd));
+    }
+}

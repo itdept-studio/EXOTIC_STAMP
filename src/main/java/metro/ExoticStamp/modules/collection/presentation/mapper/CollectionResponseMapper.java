@@ -1,5 +1,6 @@
 package metro.ExoticStamp.modules.collection.presentation.mapper;
 
+import metro.ExoticStamp.common.response.PageResponse;
 import metro.ExoticStamp.modules.collection.application.view.ProgressView;
 import metro.ExoticStamp.modules.collection.application.view.StampBookView;
 import metro.ExoticStamp.modules.collection.application.view.StampCollectView;
@@ -54,6 +55,16 @@ public class CollectionResponseMapper {
 
     public List<UserStampResponse> toUserStampResponses(List<UserStampView> views) {
         return views.stream().map(this::toResponse).toList();
+    }
+
+    public PageResponse<UserStampResponse> toUserStampPage(PageResponse<UserStampView> page) {
+        return PageResponse.of(
+                page.content().stream().map(this::toResponse).toList(),
+                page.totalElements(),
+                page.totalPages(),
+                page.page(),
+                page.size()
+        );
     }
 
     public StampBookResponse toResponse(StampBookView view) {

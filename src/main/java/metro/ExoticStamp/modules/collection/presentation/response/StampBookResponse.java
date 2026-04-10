@@ -1,5 +1,6 @@
 package metro.ExoticStamp.modules.collection.presentation.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -8,6 +9,7 @@ import lombok.NoArgsConstructor;
 import java.util.List;
 import java.util.UUID;
 
+@Schema(description = "Stamp book grid for a line/campaign")
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,6 +19,7 @@ public class StampBookResponse {
     private UUID campaignId;
     private List<StampBookStationResponse> stations;
 
+    @Schema(description = "One cell in the stamp book grid")
     @Data
     @Builder
     @NoArgsConstructor

@@ -7,6 +7,7 @@ import metro.ExoticStamp.modules.metro.domain.model.Station;
 import metro.ExoticStamp.modules.metro.domain.repository.StationRepository;
 import org.springframework.stereotype.Component;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,6 +20,14 @@ public class StationRepositoryAdapter implements StationRepository {
     @Override
     public Optional<Station> findById(UUID id) {
         return jpaStationRepository.findById(id);
+    }
+
+    @Override
+    public List<Station> findAllByIdIn(Collection<UUID> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return jpaStationRepository.findAllById(ids);
     }
 
     @Override

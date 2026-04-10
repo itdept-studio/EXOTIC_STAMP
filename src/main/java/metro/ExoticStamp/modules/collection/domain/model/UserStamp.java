@@ -56,7 +56,7 @@ public class UserStamp extends BaseEntity {
     @Column(name = "device_fingerprint", nullable = false, length = 255)
     private String deviceFingerprint;
 
-    @Column(name = "idempotency_key", nullable = false, length = 36, unique = true)
+    @Column(name = "idempotency_key", nullable = false, length = 255)
     private String idempotencyKey;
 }
 

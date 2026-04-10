@@ -1,13 +1,17 @@
 package metro.ExoticStamp.modules.collection.application.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import metro.ExoticStamp.modules.collection.application.command.CollectStampCommand;
 import metro.ExoticStamp.modules.collection.application.port.UserStampCachePort;
 import metro.ExoticStamp.modules.collection.application.view.ProgressView;
 import metro.ExoticStamp.modules.collection.application.view.StampCollectView;
+import metro.ExoticStamp.modules.collection.config.CollectionProperties;
 import metro.ExoticStamp.modules.collection.domain.event.StampCollectedEvent;
 import metro.ExoticStamp.modules.collection.domain.exception.CampaignNotFoundException;
+import metro.ExoticStamp.modules.collection.domain.exception.InvalidRequestException;
 import metro.ExoticStamp.modules.collection.domain.exception.InvalidStationException;
+import metro.ExoticStamp.modules.collection.domain.exception.StampAlreadyCollectedException;
 import metro.ExoticStamp.modules.collection.domain.model.Campaign;
 import metro.ExoticStamp.modules.collection.domain.model.CollectMethod;
 import metro.ExoticStamp.modules.collection.domain.model.StampDesign;
@@ -20,12 +24,16 @@ import metro.ExoticStamp.modules.metro.application.port.StationReadPort;
 import metro.ExoticStamp.modules.metro.application.view.MetroStationView;
 import metro.ExoticStamp.modules.rbac.application.support.RbacTransactionCallbacks;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CollectionCommandService {
@@ -38,23 +46,37 @@ public class CollectionCommandService {
     private final CollectionQueryService collectionQueryService;
     private final UserStampCachePort cachePort;
     private final ApplicationEventPublisher eventPublisher;
+    private final CollectionProperties collectionProperties;
+    private final Clock clock;
 
+    /**
+     * Resolves NFC/QR scan, enforces idempotency window, persists stamp, evicts caches, publishes event after commit.
+     */
     @Transactional
     public StampCollectView collectStamp(CollectStampCommand cmd) {
-        if (cmd == null) throw new IllegalArgumentException("Missing command");
-        if (cmd.userId() == null) throw new IllegalArgumentException("Missing userId");
-        if (cmd.idempotencyKey() == null) throw new IllegalArgumentException("Missing idempotencyKey");
+        if (cmd == null) {
+            throw new InvalidRequestException("Missing command");
+        }
+        if (cmd.userId() == null) {
+            throw new InvalidRequestException("Missing userId");
+        }
+        if (cmd.idempotencyKey() == null) {
+            throw new InvalidRequestException("Missing idempotencyKey");
+        }
         boolean hasNfc = cmd.nfcTagId() != null && !cmd.nfcTagId().isBlank();
         boolean hasQr = cmd.qrToken() != null && !cmd.qrToken().isBlank();
-        if (!hasNfc && !hasQr) throw new IllegalArgumentException("Either nfcTagId or qrToken is required");
-        if (hasNfc && hasQr) throw new IllegalArgumentException("Provide only one of nfcTagId or qrToken");
+        if (!hasNfc && !hasQr) {
+            throw new InvalidRequestException("Either nfcTagId or qrToken is required");
+        }
+        if (hasNfc && hasQr) {
+            throw new InvalidRequestException("Provide only one of nfcTagId or qrToken");
+        }
 
-        UserStamp existing = userStampRepository.findByIdempotencyKey(cmd.idempotencyKey().toString()).orElse(null);
-        if (existing != null) {
-            if (!cmd.userId().equals(existing.getUserId())) {
-                throw new IllegalArgumentException("Idempotency key already used by another user");
-            }
-            return buildResponse(existing, false);
+        String idempotencyKeyStr = cmd.idempotencyKey().toString();
+        LocalDateTime since = LocalDateTime.now(clock).minus(collectionProperties.getIdempotencyWindow());
+        Optional<UserStamp> idempotent = domainService.resolveIdempotentStamp(idempotencyKeyStr, cmd.userId(), since);
+        if (idempotent.isPresent()) {
+            return buildResponse(idempotent.get(), false);
         }
 
         CollectMethod collectMethod = cmd.collectMethod() != null
@@ -72,7 +94,7 @@ public class CollectionCommandService {
         StampDesign design = stampDesignRepository.findActiveByCampaignIdAndStationId(campaign.getId(), station.id())
                 .orElseThrow(() -> new InvalidStationException(station.id(), "No active stamp design configured for campaign"));
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         UserStamp toSave = UserStamp.builder()
                 .userId(cmd.userId())
                 .stationId(station.id())
@@ -84,28 +106,42 @@ public class CollectionCommandService {
                 .gpsVerified(false)
                 .collectMethod(collectMethod)
                 .deviceFingerprint(cmd.deviceFingerprint())
-                .idempotencyKey(cmd.idempotencyKey().toString())
+                .idempotencyKey(idempotencyKeyStr)
                 .createdAt(now)
                 .build();
 
-        UserStamp saved = userStampRepository.save(toSave);
+        UserStamp saved;
+        try {
+            saved = userStampRepository.save(toSave);
+        } catch (DataIntegrityViolationException ex) {
+            if (isUserStampCollectUniqueViolation(ex)) {
+                throw new StampAlreadyCollectedException(station.id());
+            }
+            throw ex;
+        }
 
-        // Evict caches after write (done in transaction; actual Redis delete is best-effort)
         UUID lineId = station.lineId();
-        cachePort.evictUserStamps(cmd.userId(), lineId);
-        cachePort.evictUserProgress(cmd.userId(), lineId);
+        cachePort.evictAllForUserCollection(cmd.userId(), lineId, campaign.getId());
 
         ProgressView progress = collectionQueryService.computeProgress(cmd.userId(), lineId, campaign.getId());
 
-        RbacTransactionCallbacks.afterCommit(() -> eventPublisher.publishEvent(new StampCollectedEvent(
-                UUID.randomUUID(),
-                cmd.userId(),
-                station.id(),
-                lineId,
-                campaign.getId(),
-                saved.getCollectedAt(),
-                collectMethod
-        )));
+        RbacTransactionCallbacks.afterCommit(() -> {
+            try {
+                eventPublisher.publishEvent(new StampCollectedEvent(
+                        this,
+                        UUID.randomUUID(),
+                        cmd.userId(),
+                        station.id(),
+                        lineId,
+                        campaign.getId(),
+                        saved.getCollectedAt(),
+                        collectMethod
+                ));
+            } catch (Exception e) {
+                log.error("[Collection] StampCollectedEvent publish failed userId={} stationId={}: {}",
+                        cmd.userId(), station.id(), e.getMessage(), e);
+            }
+        });
 
         return StampCollectView.builder()
                 .stampId(saved.getId())
@@ -121,6 +157,15 @@ public class CollectionCommandService {
                 .build();
     }
 
+    private static boolean isUserStampCollectUniqueViolation(DataIntegrityViolationException ex) {
+        String msg = ex.getMostSpecificCause().getMessage();
+        if (msg == null) {
+            return false;
+        }
+        return msg.contains("uq_user_stamps_collect")
+                || (msg.contains("user_stamps") && msg.contains("user_id") && msg.contains("station_id"));
+    }
+
     private Campaign resolveCampaign(UUID lineId, UUID campaignId) {
         if (campaignId != null) {
             return campaignRepository.findById(campaignId).orElseThrow(() -> new CampaignNotFoundException(campaignId));
@@ -132,7 +177,8 @@ public class CollectionCommandService {
     private StampCollectView buildResponse(UserStamp userStamp, boolean isNew) {
         MetroStationView station = stationReadPort.getStationViewById(userStamp.getStationId());
         StampDesign design = stampDesignRepository.findById(userStamp.getStampDesignId()).orElse(null);
-        ProgressView progress = collectionQueryService.computeProgress(userStamp.getUserId(), station.lineId(), userStamp.getCampaignId());
+        ProgressView progress = collectionQueryService.computeProgress(
+                userStamp.getUserId(), station.lineId(), userStamp.getCampaignId());
         return StampCollectView.builder()
                 .stampId(userStamp.getId())
                 .stationId(station.id())
@@ -147,4 +193,3 @@ public class CollectionCommandService {
                 .build();
     }
 }
-

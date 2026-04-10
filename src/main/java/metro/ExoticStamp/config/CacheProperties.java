@@ -48,13 +48,26 @@ public class CacheProperties {
         @DurationMin(seconds = 1)
         private Duration metroStationScan = Duration.ofSeconds(1800);
 
+        /** Collection read caches: 10–30 minutes (600–1800s). */
         @NotNull
-        @DurationMin(seconds = 1)
-        private Duration collectionUserStamps = Duration.ofSeconds(600);
+        @DurationMin(seconds = 600)
+        @DurationMax(seconds = 1800)
+        private Duration collectionUserStamps = Duration.ofMinutes(10);
 
         @NotNull
-        @DurationMin(seconds = 1)
-        private Duration collectionUserProgress = Duration.ofSeconds(300);
+        @DurationMin(seconds = 600)
+        @DurationMax(seconds = 1800)
+        private Duration collectionUserProgress = Duration.ofMinutes(10);
+
+        @NotNull
+        @DurationMin(seconds = 600)
+        @DurationMax(seconds = 1800)
+        private Duration collectionUserHistory = Duration.ofMinutes(15);
+
+        @NotNull
+        @DurationMin(seconds = 600)
+        @DurationMax(seconds = 1800)
+        private Duration collectionStampBook = Duration.ofMinutes(15);
     }
 
     /**

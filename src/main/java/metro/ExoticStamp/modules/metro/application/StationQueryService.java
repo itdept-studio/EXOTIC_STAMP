@@ -19,6 +19,7 @@ import metro.ExoticStamp.modules.metro.presentation.dto.response.StationStatsRes
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.List;
 
 @Service
@@ -144,6 +145,16 @@ public class StationQueryService implements StationReadPort {
     public List<MetroStationView> listActiveStationsByLineId(UUID lineId) {
         lineRepository.findById(lineId).orElseThrow(() -> new LineNotFoundException(lineId));
         return stationRepository.findAllByLineIdAndIsActive(lineId, true).stream().map(this::toStationView).toList();
+    }
+
+    @Override
+    public List<MetroStationView> listStationViewsByIds(Collection<UUID> stationIds) {
+        if (stationIds == null || stationIds.isEmpty()) {
+            return List.of();
+        }
+        return stationRepository.findAllByIdIn(stationIds.stream().distinct().toList()).stream()
+                .map(this::toStationView)
+                .toList();
     }
 
     private MetroStationView toStationView(Station station) {

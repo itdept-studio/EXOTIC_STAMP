@@ -2,10 +2,13 @@ package metro.ExoticStamp.modules.collection.infrastructure.repository;
 
 import lombok.RequiredArgsConstructor;
 import metro.ExoticStamp.modules.collection.domain.model.UserStamp;
+import metro.ExoticStamp.modules.collection.domain.model.UserStampSlice;
 import metro.ExoticStamp.modules.collection.domain.repository.UserStampRepository;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,8 +25,9 @@ public class UserStampRepositoryAdapter implements UserStampRepository {
     }
 
     @Override
-    public Optional<UserStamp> findByIdempotencyKey(String idempotencyKey) {
-        return jpaUserStampRepository.findByIdempotencyKey(idempotencyKey);
+    public Optional<UserStamp> findFirstByIdempotencyKeyAndCollectedAtAfterOrderByCollectedAtDesc(
+            String idempotencyKey, LocalDateTime since) {
+        return jpaUserStampRepository.findFirstByIdempotencyKeyAndCollectedAtAfterOrderByCollectedAtDesc(idempotencyKey, since);
     }
 
     @Override
@@ -38,7 +42,30 @@ public class UserStampRepositoryAdapter implements UserStampRepository {
 
     @Override
     public List<UserStamp> findRecentByUserId(UUID userId, int limit) {
-        return jpaUserStampRepository.findByUserIdOrderByCollectedAtDesc(userId, PageRequest.of(0, limit));
+        return jpaUserStampRepository.findByUserIdOrderByCollectedAtDesc(userId, PageRequest.of(0, limit)).getContent();
+    }
+
+    @Override
+    public UserStampSlice findByUserIdAndCampaignIdPaged(UUID userId, UUID campaignId, int page, int size) {
+        Page<UserStamp> p = jpaUserStampRepository.findByUserIdAndCampaignIdOrderByCollectedAtDesc(
+                userId, campaignId, PageRequest.of(page, size));
+        return toSlice(p);
+    }
+
+    @Override
+    public UserStampSlice findByUserIdPaged(UUID userId, int page, int size) {
+        Page<UserStamp> p = jpaUserStampRepository.findByUserIdOrderByCollectedAtDesc(userId, PageRequest.of(page, size));
+        return toSlice(p);
+    }
+
+    private static UserStampSlice toSlice(Page<UserStamp> p) {
+        return new UserStampSlice(
+                p.getContent(),
+                p.getTotalElements(),
+                p.getTotalPages(),
+                p.getNumber(),
+                p.getSize()
+        );
     }
 
     @Override

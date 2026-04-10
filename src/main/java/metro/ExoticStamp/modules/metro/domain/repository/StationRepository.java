@@ -4,12 +4,15 @@ import java.util.UUID;
 
 import metro.ExoticStamp.modules.metro.domain.model.Station;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
 public interface StationRepository {
 
     Optional<Station> findById(UUID id);
+
+    List<Station> findAllByIdIn(Collection<UUID> ids);
 
     Station save(Station station);
 

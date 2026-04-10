@@ -1,15 +1,18 @@
 package metro.ExoticStamp.modules.collection.application;
 
+import metro.ExoticStamp.common.response.PageResponse;
 import metro.ExoticStamp.modules.collection.application.mapper.UserStampAppMapper;
 import metro.ExoticStamp.modules.collection.application.port.UserStampCachePort;
 import metro.ExoticStamp.modules.collection.application.service.CollectionQueryService;
 import metro.ExoticStamp.modules.collection.application.view.ProgressView;
 import metro.ExoticStamp.modules.collection.application.view.StampBookView;
 import metro.ExoticStamp.modules.collection.application.view.UserStampView;
+import metro.ExoticStamp.modules.collection.config.CollectionProperties;
 import metro.ExoticStamp.modules.collection.domain.model.Campaign;
 import metro.ExoticStamp.modules.collection.domain.model.CollectMethod;
 import metro.ExoticStamp.modules.collection.domain.model.StampDesign;
 import metro.ExoticStamp.modules.collection.domain.model.UserStamp;
+import metro.ExoticStamp.modules.collection.domain.model.UserStampSlice;
 import metro.ExoticStamp.modules.collection.domain.repository.CampaignRepository;
 import metro.ExoticStamp.modules.collection.domain.repository.StampDesignRepository;
 import metro.ExoticStamp.modules.collection.domain.repository.UserStampRepository;
@@ -21,13 +24,15 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,18 +49,22 @@ class CollectionQueryServiceTest {
     @Mock private UserStampRepository userStampRepository;
     @Mock private StationReadPort stationReadPort;
     @Mock private UserStampCachePort cachePort;
+    @Mock private CollectionProperties collectionProperties;
 
     private CollectionQueryService service;
 
     @BeforeEach
     void setUp() {
+        lenient().when(collectionProperties.getDefaultPageSize()).thenReturn(20);
+        lenient().when(collectionProperties.getMaxPageSize()).thenReturn(50);
         service = new CollectionQueryService(
                 campaignRepository,
                 stampDesignRepository,
                 userStampRepository,
                 stationReadPort,
                 cachePort,
-                new UserStampAppMapper()
+                new UserStampAppMapper(),
+                collectionProperties
         );
     }
 
@@ -93,6 +102,7 @@ class CollectionQueryServiceTest {
                 .startDate(LocalDateTime.now()).endDate(LocalDateTime.now().plusDays(1)).build();
         c.setId(CAMPAIGN_ID);
         when(campaignRepository.findDefaultByLineId(LINE_ID)).thenReturn(Optional.of(c));
+        when(cachePort.getStampBook(USER_ID, LINE_ID, CAMPAIGN_ID)).thenReturn(Optional.empty());
 
         when(stationReadPort.listActiveStationsByLineId(LINE_ID)).thenReturn(List.of(
                 MetroStationView.builder().id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true).build(),
@@ -112,28 +122,25 @@ class CollectionQueryServiceTest {
                 .build();
         when(userStampRepository.findByUserIdAndCampaignId(USER_ID, CAMPAIGN_ID)).thenReturn(List.of(us));
 
-        when(stampDesignRepository.findActiveByCampaignIdAndStationId(eq(CAMPAIGN_ID), any(UUID.class)))
-                .thenAnswer(inv -> {
-                    UUID stationId = inv.getArgument(1);
-                    if (STATION_ID.equals(stationId)) {
-                        return Optional.of(StampDesign.builder()
-                                .name("S")
-                                .artworkUrl("https://cdn/central.png")
-                                .isActive(true)
-                                .isLimited(false)
-                                .build());
-                    }
-                    return Optional.empty();
-                });
+        when(stampDesignRepository.findActiveByCampaignIdAndStationIdIn(eq(CAMPAIGN_ID), anyList()))
+                .thenReturn(List.of(StampDesign.builder()
+                        .stationId(STATION_ID)
+                        .campaignId(CAMPAIGN_ID)
+                        .name("S")
+                        .artworkUrl("https://cdn/central.png")
+                        .isActive(true)
+                        .isLimited(false)
+                        .build()));
 
         StampBookView res = service.getStampBook(USER_ID, LINE_ID, null);
         assertEquals(2, res.stations().size());
         assertTrue(res.stations().get(0).collected());
         assertFalse(res.stations().get(1).collected());
+        verify(cachePort).putStampBook(eq(USER_ID), eq(LINE_ID), eq(CAMPAIGN_ID), any());
     }
 
     @Test
-    void historyQuery_returnsRecent() {
+    void historyQuery_returnsRecentPage() {
         UserStamp us = UserStamp.builder()
                 .userId(USER_ID)
                 .stationId(STATION_ID)
@@ -145,15 +152,18 @@ class CollectionQueryServiceTest {
                 .deviceFingerprint("device-fingerprint-123")
                 .idempotencyKey(UUID.randomUUID().toString())
                 .build();
-        when(userStampRepository.findRecentByUserId(USER_ID, 20)).thenReturn(List.of(us));
-        when(stationReadPort.getStationViewById(STATION_ID))
-                .thenReturn(MetroStationView.builder().id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true).build());
-        when(stampDesignRepository.findById(DESIGN_ID))
-                .thenReturn(Optional.of(StampDesign.builder().name("S").artworkUrl("https://cdn/x.png").isActive(true).isLimited(false).build()));
+        when(cachePort.getUserHistory(USER_ID, 0, 20)).thenReturn(Optional.empty());
+        when(userStampRepository.findByUserIdPaged(USER_ID, 0, 20))
+                .thenReturn(new UserStampSlice(List.of(us), 1, 1, 0, 20));
+        when(stationReadPort.listStationViewsByIds(any())).thenReturn(List.of(
+                MetroStationView.builder().id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true).build()));
+        StampDesign sd = StampDesign.builder().name("S").artworkUrl("https://cdn/x.png").isActive(true).isLimited(false).build();
+        sd.setId(DESIGN_ID);
+        when(stampDesignRepository.findAllByIdIn(any())).thenReturn(List.of(sd));
 
-        List<UserStampView> res = service.getMyHistory(USER_ID, 20);
-        assertEquals(1, res.size());
-        assertEquals("Central", res.get(0).stationName());
+        PageResponse<UserStampView> res = service.getMyHistory(USER_ID, 0, 20);
+        assertEquals(1, res.content().size());
+        assertEquals("Central", res.content().get(0).stationName());
+        verify(cachePort).putUserHistory(eq(USER_ID), eq(0), eq(20), any());
     }
 }
-

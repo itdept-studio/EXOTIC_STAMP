@@ -1,7 +1,9 @@
 package metro.ExoticStamp.modules.collection.domain.repository;
 
 import metro.ExoticStamp.modules.collection.domain.model.UserStamp;
+import metro.ExoticStamp.modules.collection.domain.model.UserStampSlice;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -10,7 +12,11 @@ public interface UserStampRepository {
 
     Optional<UserStamp> findById(UUID id);
 
-    Optional<UserStamp> findByIdempotencyKey(String idempotencyKey);
+    /**
+     * Latest stamp with this idempotency key where {@code collectedAt} is after {@code since} (1h window query).
+     */
+    Optional<UserStamp> findFirstByIdempotencyKeyAndCollectedAtAfterOrderByCollectedAtDesc(
+            String idempotencyKey, LocalDateTime since);
 
     boolean existsByUserIdAndStationIdAndCampaignId(UUID userId, UUID stationId, UUID campaignId);
 
@@ -19,6 +25,10 @@ public interface UserStampRepository {
     List<UserStamp> findRecentByUserId(UUID userId, int limit);
 
     List<UserStamp> findByUserIdAndCampaignId(UUID userId, UUID campaignId);
+
+    UserStampSlice findByUserIdAndCampaignIdPaged(UUID userId, UUID campaignId, int page, int size);
+
+    UserStampSlice findByUserIdPaged(UUID userId, int page, int size);
 
     long countDistinctStationsByUserIdAndCampaignId(UUID userId, UUID campaignId);
 }

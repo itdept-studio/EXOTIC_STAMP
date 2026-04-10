@@ -1,5 +1,6 @@
 package metro.ExoticStamp.modules.collection.presentation.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -9,9 +10,11 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+@Schema(description = "Scan/collect request (NFC or QR, not both)")
 public class CollectStampRequest {
 
     @NotNull
+    @Schema(description = "Client-generated idempotency key (UUID)")
     private UUID idempotencyKey;
 
     private String nfcTagId;
