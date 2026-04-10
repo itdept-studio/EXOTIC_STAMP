@@ -4,20 +4,21 @@ import metro.ExoticStamp.common.exceptions.storage.InvalidImageTypeException;
 import metro.ExoticStamp.infra.storage.FileValidator;
 import metro.ExoticStamp.infra.storage.StorageProperties;
 import metro.ExoticStamp.infra.storage.StorageService;
+import metro.ExoticStamp.modules.metro.application.command.CreateStationCommand;
+import metro.ExoticStamp.modules.metro.application.command.RotateStationQrTokenCommand;
+import metro.ExoticStamp.modules.metro.application.command.UpdateStationCommand;
 import metro.ExoticStamp.modules.metro.application.mapper.MetroAppMapper;
 import metro.ExoticStamp.modules.metro.application.port.StationCachePort;
+import metro.ExoticStamp.modules.metro.application.view.StationDetailView;
 import metro.ExoticStamp.modules.metro.domain.event.StationQrRotatedEvent;
 import metro.ExoticStamp.modules.metro.domain.exception.DuplicateNfcTagException;
 import metro.ExoticStamp.modules.metro.domain.exception.LineNotFoundException;
+import metro.ExoticStamp.modules.metro.domain.exception.StationInactiveException;
 import metro.ExoticStamp.modules.metro.domain.exception.StationNotFoundException;
 import metro.ExoticStamp.modules.metro.domain.model.Line;
 import metro.ExoticStamp.modules.metro.domain.model.Station;
 import metro.ExoticStamp.modules.metro.domain.repository.LineRepository;
 import metro.ExoticStamp.modules.metro.domain.repository.StationRepository;
-import metro.ExoticStamp.modules.metro.presentation.dto.request.CreateStationRequest;
-import metro.ExoticStamp.modules.metro.presentation.dto.request.RotateQrTokenRequest;
-import metro.ExoticStamp.modules.metro.presentation.dto.request.UpdateStationRequest;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.StationDetailResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -95,9 +96,9 @@ class StationCommandServiceTest {
             return s;
         });
         when(lineRepository.save(any(Line.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(mapper.toStationDetail(any(Station.class), eq(true))).thenReturn(StationDetailResponse.builder().id(STATION_ID).build());
+        when(mapper.toStationDetailView(any(Station.class), eq(true))).thenReturn(StationDetailView.builder().id(STATION_ID).build());
 
-        CreateStationRequest req = CreateStationRequest.builder()
+        CreateStationCommand req = CreateStationCommand.builder()
                 .lineId(LINE_ID)
                 .code("S1")
                 .name("Station")
@@ -118,7 +119,7 @@ class StationCommandServiceTest {
     @Test
     void createStation_lineNotFound_throws() {
         when(lineRepository.findById(LINE_ID)).thenReturn(Optional.empty());
-        CreateStationRequest req = CreateStationRequest.builder()
+        CreateStationCommand req = CreateStationCommand.builder()
                 .lineId(LINE_ID)
                 .code("S1").name("N").sequence(1).isActive(true).build();
         assertThrows(LineNotFoundException.class, () -> stationCommandService.createStation(req));
@@ -131,7 +132,7 @@ class StationCommandServiceTest {
         when(stationRepository.existsByCode("S1")).thenReturn(false);
         when(stationRepository.existsByNfcTagId("NFC_DUP")).thenReturn(true);
 
-        CreateStationRequest req = CreateStationRequest.builder()
+        CreateStationCommand req = CreateStationCommand.builder()
                 .lineId(LINE_ID)
                 .code("S1").name("Station").sequence(1).isActive(true).nfcTagId("NFC_DUP").build();
 
@@ -142,7 +143,7 @@ class StationCommandServiceTest {
     void updateStation_notFound_throws() {
         when(stationRepository.findById(STATION_ID)).thenReturn(Optional.empty());
         assertThrows(StationNotFoundException.class,
-                () -> stationCommandService.updateStation(STATION_ID, new UpdateStationRequest()));
+                () -> stationCommandService.updateStation(UpdateStationCommand.builder().stationId(STATION_ID).build()));
     }
 
     @Test
@@ -152,7 +153,7 @@ class StationCommandServiceTest {
         when(stationRepository.save(any(Station.class))).thenAnswer(inv -> inv.getArgument(0));
         when(lineRepository.findById(LINE_ID)).thenReturn(Optional.of(sampleLine()));
         when(lineRepository.save(any(Line.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(mapper.toStationDetail(any(), eq(true))).thenReturn(StationDetailResponse.builder().id(STATION_ID).build());
+        when(mapper.toStationDetailView(any(), eq(true))).thenReturn(StationDetailView.builder().id(STATION_ID).build());
 
         stationCommandService.deactivateStation(STATION_ID);
 
@@ -166,9 +167,9 @@ class StationCommandServiceTest {
         when(stationRepository.findById(STATION_ID)).thenReturn(Optional.of(st));
         when(stationRepository.existsByQrCodeTokenAndIdNot("NEW_QR", STATION_ID)).thenReturn(false);
         when(stationRepository.save(any(Station.class))).thenAnswer(inv -> inv.getArgument(0));
-        when(mapper.toStationDetail(any(), eq(true))).thenReturn(StationDetailResponse.builder().id(STATION_ID).build());
+        when(mapper.toStationDetailView(any(), eq(true))).thenReturn(StationDetailView.builder().id(STATION_ID).build());
 
-        stationCommandService.rotateQrToken(STATION_ID, new RotateQrTokenRequest("NEW_QR"));
+        stationCommandService.rotateQrToken(new RotateStationQrTokenCommand(STATION_ID, "NEW_QR"));
 
         verify(stationCachePort).evictByQrToken("OLD_QR");
         verify(stationCachePort).evictDetailByStationId(STATION_ID);
@@ -223,6 +224,24 @@ class StationCommandServiceTest {
         verify(stationCachePort).evictDetailByStationId(STATION_ID);
         verify(stationCachePort).evictByNfcTagId("NFC");
         verify(stationCachePort).evictByQrToken("QR");
+    }
+
+    @Test
+    void incrementCollectorCount_inactiveStation_throws() {
+        Station st = sampleStation();
+        st.setIsActive(false);
+        when(stationRepository.findById(STATION_ID)).thenReturn(Optional.of(st));
+
+        assertThrows(StationInactiveException.class, () -> stationCommandService.incrementCollectorCount(STATION_ID));
+    }
+
+    @Test
+    void incrementCollectorCount_overflow_throws() {
+        Station st = sampleStation();
+        st.setCollectorCount(Integer.MAX_VALUE);
+        when(stationRepository.findById(STATION_ID)).thenReturn(Optional.of(st));
+
+        assertThrows(IllegalArgumentException.class, () -> stationCommandService.incrementCollectorCount(STATION_ID));
     }
 
     private static Line sampleLine() {

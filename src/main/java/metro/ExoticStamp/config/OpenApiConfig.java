@@ -24,14 +24,6 @@ import org.springframework.context.annotation.Configuration;
                 @Tag(
                         name = "RBAC",
                         description = "Role and permission management APIs"
-                ),
-                @Tag(
-                        name = "Metro",
-                        description = "Public metro line/station lookup APIs"
-                ),
-                @Tag(
-                        name = "Admin Metro",
-                        description = "Administrative metro management APIs (ADMIN role)"
                 )
         },
         info = @Info(

@@ -4,10 +4,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import metro.ExoticStamp.modules.user.application.UserCommandService;
 import metro.ExoticStamp.modules.user.application.UserQueryService;
-import metro.ExoticStamp.modules.user.application.mapper.UserAppMapper;
 import metro.ExoticStamp.modules.user.presentation.dto.request.CreateUserRequest;
 import metro.ExoticStamp.modules.user.presentation.dto.request.UpdateUserRequest;
 import metro.ExoticStamp.modules.user.presentation.dto.response.UserResponse;
+import metro.ExoticStamp.modules.user.presentation.mapper.UserPresentationMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -29,7 +29,7 @@ public class UserController {
     @GetMapping("/{id}")
     @Operation(summary = "Get user by id")
     public ResponseEntity<UserResponse> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(queryService.getById(id));
+        return ResponseEntity.ok(UserPresentationMapper.toResponse(queryService.getById(id)));
     }
 
     @GetMapping("/me")
@@ -37,16 +37,17 @@ public class UserController {
     public ResponseEntity<UserResponse> getMe(
             @AuthenticationPrincipal UserDetails principal) {
         return ResponseEntity.ok(
-                queryService.getByUsername(principal.getUsername()));
+                UserPresentationMapper.toResponse(queryService.getByUsername(principal.getUsername())));
     }
 
     @PostMapping
     @Operation(summary = "Create a new user")
     public ResponseEntity<UserResponse> create(
             @Valid @RequestBody CreateUserRequest req) {
+        UserResponse response = UserPresentationMapper.toResponse(
+                commandService.createUser(UserPresentationMapper.toCreateCommand(req)));
         return ResponseEntity.status(201)
-                .body(commandService.createUser(
-                        UserAppMapper.toCreateCommand(req)));
+                .body(response);
     }
 
     @PutMapping("/{id}")
@@ -54,8 +55,8 @@ public class UserController {
     public ResponseEntity<UserResponse> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateUserRequest req) {
-        return ResponseEntity.ok(commandService.updateUser(
-                UserAppMapper.toUpdateCommand(id, req)));
+        return ResponseEntity.ok(UserPresentationMapper.toResponse(commandService.updateUser(
+                UserPresentationMapper.toUpdateCommand(id, req))));
     }
 
     @DeleteMapping("/{id}")

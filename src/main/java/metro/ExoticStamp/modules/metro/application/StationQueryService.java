@@ -1,26 +1,25 @@
 package metro.ExoticStamp.modules.metro.application;
 
-import java.util.UUID;
-
 import lombok.RequiredArgsConstructor;
 import metro.ExoticStamp.modules.metro.application.mapper.MetroAppMapper;
 import metro.ExoticStamp.modules.metro.application.port.StationCachePort;
 import metro.ExoticStamp.modules.metro.application.port.StationReadPort;
 import metro.ExoticStamp.modules.metro.application.view.MetroStationView;
+import metro.ExoticStamp.modules.metro.application.view.StationDetailView;
+import metro.ExoticStamp.modules.metro.application.view.StationStatsView;
+import metro.ExoticStamp.modules.metro.application.view.StationView;
 import metro.ExoticStamp.modules.metro.domain.exception.LineNotFoundException;
 import metro.ExoticStamp.modules.metro.domain.exception.StationInactiveException;
 import metro.ExoticStamp.modules.metro.domain.exception.StationNotFoundException;
 import metro.ExoticStamp.modules.metro.domain.model.Station;
 import metro.ExoticStamp.modules.metro.domain.repository.LineRepository;
 import metro.ExoticStamp.modules.metro.domain.repository.StationRepository;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.StationDetailResponse;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.StationResponse;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.StationStatsResponse;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -32,22 +31,22 @@ public class StationQueryService implements StationReadPort {
     private final StationCachePort stationCachePort;
     private final MetroAppMapper mapper;
 
-    public List<StationResponse> listStations(UUID lineId, boolean activeOnly) {
+    public List<StationView> listStations(UUID lineId, boolean activeOnly) {
         if (lineId != null) {
             lineRepository.findById(lineId).orElseThrow(() -> new LineNotFoundException(lineId));
             List<Station> stations = activeOnly
                     ? stationRepository.findAllByLineIdAndIsActive(lineId, true)
                     : stationRepository.findAllByLineId(lineId);
-            return stations.stream().map(mapper::toStationSummary).toList();
+            return stations.stream().map(mapper::toStationView).toList();
         }
         List<Station> all = activeOnly
                 ? stationRepository.findAllActiveStations()
                 : stationRepository.findAllStationsOrdered();
-        return all.stream().map(mapper::toStationSummary).toList();
+        return all.stream().map(mapper::toStationView).toList();
     }
 
-    public StationDetailResponse getStationDetailById(UUID stationId) {
-        StationDetailResponse cached = stationCachePort.getByStationId(stationId).orElse(null);
+    public StationDetailView getStationDetailById(UUID stationId) {
+        StationDetailView cached = stationCachePort.getByStationId(stationId).orElse(null);
         if (cached != null) {
             if (!cached.isActive()) {
                 throw new StationNotFoundException(stationId);
@@ -60,13 +59,13 @@ public class StationQueryService implements StationReadPort {
         if (!Boolean.TRUE.equals(station.getIsActive())) {
             throw new StationNotFoundException(stationId);
         }
-        StationDetailResponse detail = mapper.toStationDetail(station, false);
+        StationDetailView detail = mapper.toStationDetailView(station, false);
         stationCachePort.putByStationId(stationId, detail);
         return detail;
     }
 
-    public StationDetailResponse resolveStationByNfc(String nfcTagId) {
-        StationDetailResponse cached = stationCachePort.getByNfcTagId(nfcTagId).orElse(null);
+    public StationDetailView resolveStationByNfc(String nfcTagId) {
+        StationDetailView cached = stationCachePort.getByNfcTagId(nfcTagId).orElse(null);
         if (cached != null) {
             if (!cached.isActive()) {
                 throw new StationInactiveException(cached.getId());
@@ -79,14 +78,14 @@ public class StationQueryService implements StationReadPort {
         if (!Boolean.TRUE.equals(station.getIsActive())) {
             throw new StationInactiveException(station.getId());
         }
-        StationDetailResponse detail = mapper.toStationDetail(station, false);
+        StationDetailView detail = mapper.toStationDetailView(station, false);
         stationCachePort.putByNfcTagId(nfcTagId, detail);
         return detail;
     }
 
-    public List<StationStatsResponse> stationStats() {
+    public List<StationStatsView> stationStats() {
         return stationRepository.findTop20StationStatsRaw().stream()
-                .map(row -> StationStatsResponse.builder()
+                .map(row -> StationStatsView.builder()
                         .stationId((UUID) row[0])
                         .stationName((String) row[1])
                         .lineName((String) row[2])
@@ -95,8 +94,8 @@ public class StationQueryService implements StationReadPort {
                 .toList();
     }
 
-    public StationDetailResponse resolveStationByQr(String qrCodeToken) {
-        StationDetailResponse cached = stationCachePort.getByQrToken(qrCodeToken).orElse(null);
+    public StationDetailView resolveStationByQr(String qrCodeToken) {
+        StationDetailView cached = stationCachePort.getByQrToken(qrCodeToken).orElse(null);
         if (cached != null) {
             if (!cached.isActive()) {
                 throw new StationInactiveException(cached.getId());
@@ -109,7 +108,7 @@ public class StationQueryService implements StationReadPort {
         if (!Boolean.TRUE.equals(station.getIsActive())) {
             throw new StationInactiveException(station.getId());
         }
-        StationDetailResponse detail = mapper.toStationDetail(station, false);
+        StationDetailView detail = mapper.toStationDetailView(station, false);
         stationCachePort.putByQrToken(qrCodeToken, detail);
         return detail;
     }
@@ -121,7 +120,7 @@ public class StationQueryService implements StationReadPort {
         if (!Boolean.TRUE.equals(station.getIsActive())) {
             throw new StationInactiveException(station.getId());
         }
-        return toStationView(station);
+        return toSharedStationView(station);
     }
 
     @Override
@@ -131,20 +130,20 @@ public class StationQueryService implements StationReadPort {
         if (!Boolean.TRUE.equals(station.getIsActive())) {
             throw new StationInactiveException(station.getId());
         }
-        return toStationView(station);
+        return toSharedStationView(station);
     }
 
     @Override
     public MetroStationView getStationViewById(UUID stationId) {
         Station station = stationRepository.findById(stationId)
                 .orElseThrow(() -> new StationNotFoundException(stationId));
-        return toStationView(station);
+        return toSharedStationView(station);
     }
 
     @Override
     public List<MetroStationView> listActiveStationsByLineId(UUID lineId) {
         lineRepository.findById(lineId).orElseThrow(() -> new LineNotFoundException(lineId));
-        return stationRepository.findAllByLineIdAndIsActive(lineId, true).stream().map(this::toStationView).toList();
+        return stationRepository.findAllByLineIdAndIsActive(lineId, true).stream().map(this::toSharedStationView).toList();
     }
 
     @Override
@@ -153,42 +152,38 @@ public class StationQueryService implements StationReadPort {
             return List.of();
         }
         return stationRepository.findAllByIdIn(stationIds.stream().distinct().toList()).stream()
-                .map(this::toStationView)
+                .map(this::toSharedStationView)
                 .toList();
     }
 
-    private MetroStationView toStationView(Station station) {
+    private MetroStationView toSharedStationView(Station station) {
         return MetroStationView.builder()
                 .id(station.getId())
                 .lineId(station.getLineId())
                 .name(station.getName())
                 .sequence(station.getSequence())
                 .active(Boolean.TRUE.equals(station.getIsActive()))
+                .latitude(station.getLatitude())
+                .longitude(station.getLongitude())
                 .build();
     }
 
-    /** Public responses never include NFC/QR even if cache was populated incorrectly. */
-    private static StationDetailResponse stripSensitiveForPublic(StationDetailResponse d) {
-        return StationDetailResponse.builder()
-                .id(d.getId())
-                .lineId(d.getLineId())
-                .code(d.getCode())
-                .name(d.getName())
-                .sequence(d.getSequence())
-                .description(d.getDescription())
-                .historicalInfo(d.getHistoricalInfo())
-                .imageUrl(d.getImageUrl())
-                .latitude(d.getLatitude())
-                .longitude(d.getLongitude())
+    private static StationDetailView stripSensitiveForPublic(StationDetailView detail) {
+        return StationDetailView.builder()
+                .id(detail.getId())
+                .lineId(detail.getLineId())
+                .code(detail.getCode())
+                .name(detail.getName())
+                .sequence(detail.getSequence())
+                .description(detail.getDescription())
+                .historicalInfo(detail.getHistoricalInfo())
+                .imageUrl(detail.getImageUrl())
+                .latitude(detail.getLatitude())
+                .longitude(detail.getLongitude())
                 .nfcTagId(null)
                 .qrCodeToken(null)
-                .collectorCount(d.getCollectorCount())
-                .isActive(d.isActive())
+                .collectorCount(detail.getCollectorCount())
+                .isActive(detail.isActive())
                 .build();
     }
 }
-
-
-
-
-

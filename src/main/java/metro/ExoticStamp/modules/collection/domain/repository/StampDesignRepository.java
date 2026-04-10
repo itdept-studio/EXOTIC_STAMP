@@ -18,5 +18,7 @@ public interface StampDesignRepository {
     List<StampDesign> findActiveByCampaignIdAndStationIdIn(UUID campaignId, Collection<UUID> stationIds);
 
     StampDesign save(StampDesign stampDesign);
+
+    List<StampDesign> findByCampaignIdOrderByNameAsc(UUID campaignId);
 }
 

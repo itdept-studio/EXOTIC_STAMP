@@ -25,6 +25,7 @@ public class CollectionWebMvcTestSecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/v1/collections/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/collections/**").authenticated()
+                        .requestMatchers("/api/v1/admin/collections/**").authenticated()
                         .anyRequest().permitAll());
         return http.build();
     }

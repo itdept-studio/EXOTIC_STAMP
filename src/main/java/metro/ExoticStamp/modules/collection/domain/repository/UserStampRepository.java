@@ -5,6 +5,7 @@ import metro.ExoticStamp.modules.collection.domain.model.UserStampSlice;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -31,5 +32,12 @@ public interface UserStampRepository {
     UserStampSlice findByUserIdPaged(UUID userId, int page, int size);
 
     long countDistinctStationsByUserIdAndCampaignId(UUID userId, UUID campaignId);
+
+    long countAll();
+
+    /**
+     * Stamp counts per campaign id (rows with null campaign id are included when present).
+     */
+    Map<UUID, Long> countStampsByCampaignId();
 }
 

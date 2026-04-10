@@ -1,6 +1,7 @@
 package metro.ExoticStamp.modules.user.domain.model;
 
 import metro.ExoticStamp.common.entity.BaseEntity;
+import metro.ExoticStamp.common.security.AuthenticatedUser;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
@@ -21,7 +22,7 @@ import java.util.regex.Pattern;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class User extends BaseEntity implements UserDetails {
+public class User extends BaseEntity implements UserDetails, AuthenticatedUser {
 
     @Column(length = 50)
     private String firstname;
@@ -230,5 +231,10 @@ public class User extends BaseEntity implements UserDetails {
     @Override
     public boolean isEnabled() {
         return UserDetails.super.isEnabled();
+    }
+
+    @Override
+    public java.util.UUID getUserId() {
+        return getId();
     }
 }

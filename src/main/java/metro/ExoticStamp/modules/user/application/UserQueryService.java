@@ -4,10 +4,10 @@ import metro.ExoticStamp.common.model.PageQuery;
 import metro.ExoticStamp.common.model.PageResult;
 import metro.ExoticStamp.modules.user.application.mapper.UserAppMapper;
 import metro.ExoticStamp.modules.user.application.port.UserCachePort;
+import metro.ExoticStamp.modules.user.application.view.UserView;
 import metro.ExoticStamp.modules.user.domain.exception.UserNotFoundException;
 import metro.ExoticStamp.modules.user.domain.model.User;
 import metro.ExoticStamp.modules.user.domain.repository.UserRepository;
-import metro.ExoticStamp.modules.user.presentation.dto.response.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,11 +23,11 @@ public class UserQueryService {
     private final UserCachePort cachePort;
 
     @Transactional(readOnly = true)
-    public UserResponse getById(UUID id) {
+    public UserView getById(UUID id) {
         return cachePort.get(id)
                 .orElseGet(() -> {
-                    UserResponse res = userRepository.findById(id)
-                            .map(UserAppMapper::toResponse)
+                    UserView res = userRepository.findById(id)
+                            .map(UserAppMapper::toView)
                             .orElseThrow(() -> new UserNotFoundException(id));
                     cachePort.put(id, res);
                     return res;
@@ -35,24 +35,24 @@ public class UserQueryService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getByUsername(String username) {
+    public UserView getByUsername(String username) {
         return userRepository.findByUsername(username)
-                .map(UserAppMapper::toResponse)
+                .map(UserAppMapper::toView)
                 .orElseThrow(() -> new UserNotFoundException("username", username));
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getByEmail(String email) {
+    public UserView getByEmail(String email) {
         return userRepository.findByEmail(email)
-                .map(UserAppMapper::toResponse)
+                .map(UserAppMapper::toView)
                 .orElseThrow(() -> new UserNotFoundException("email", email));
     }
 
     @Transactional(readOnly = true)
-    public PageResult<UserResponse> getAll(PageQuery query) {
+    public PageResult<UserView> getAll(PageQuery query) {
         PageResult<User> page = userRepository.findAll(query);
-        List<UserResponse> responses = page.content().stream()
-                .map(UserAppMapper::toResponse)
+        List<UserView> responses = page.content().stream()
+                .map(UserAppMapper::toView)
                 .toList();
         return PageResult.of(responses, page.totalElements(), page.totalPages(), page.currentPage());
     }

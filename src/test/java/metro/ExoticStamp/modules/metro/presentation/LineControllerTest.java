@@ -8,7 +8,8 @@ import metro.ExoticStamp.modules.auth.infrastructure.security.UserDetailsService
 import metro.ExoticStamp.modules.metro.MetroWebMvcTestSecurityConfig;
 import metro.ExoticStamp.modules.metro.application.LineCommandService;
 import metro.ExoticStamp.modules.metro.application.LineQueryService;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.LineResponse;
+import metro.ExoticStamp.modules.metro.application.view.LineView;
+import metro.ExoticStamp.modules.metro.presentation.mapper.MetroPresentationMapper;
 import metro.ExoticStamp.modules.rbac.application.RoleQueryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(LineController.class)
-@Import(MetroWebMvcTestSecurityConfig.class)
+@Import({MetroWebMvcTestSecurityConfig.class, MetroPresentationMapper.class})
 class LineControllerTest {
     private static final UUID LINE_ID = UUID.fromString("00000000-0000-0000-0000-000000000101");
 
@@ -64,7 +65,7 @@ class LineControllerTest {
     @WithMockUser(roles = "ADMIN")
     void createLine_created() throws Exception {
         when(lineCommandService.createLine(any())).thenReturn(
-                LineResponse.builder().id(LINE_ID).code("L1").name("Line").isActive(true).build());
+                LineView.builder().id(LINE_ID).code("L1").name("Line").isActive(true).build());
 
         mockMvc.perform(
                         post("/api/v1/lines")

@@ -8,8 +8,10 @@ import metro.ExoticStamp.modules.auth.infrastructure.security.UserDetailsService
 import metro.ExoticStamp.modules.metro.MetroWebMvcTestSecurityConfig;
 import metro.ExoticStamp.modules.metro.application.StationCommandService;
 import metro.ExoticStamp.modules.metro.application.StationQueryService;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.StationDetailResponse;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.StationStatsResponse;
+import metro.ExoticStamp.modules.metro.application.view.StationDetailView;
+import metro.ExoticStamp.modules.metro.application.view.StationImageUploadView;
+import metro.ExoticStamp.modules.metro.application.view.StationStatsView;
+import metro.ExoticStamp.modules.metro.presentation.mapper.MetroPresentationMapper;
 import metro.ExoticStamp.modules.rbac.application.RoleQueryService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,13 +30,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(StationController.class)
-@Import(MetroWebMvcTestSecurityConfig.class)
+@Import({MetroWebMvcTestSecurityConfig.class, MetroPresentationMapper.class})
 class StationControllerTest {
     private static final UUID STATION_1 = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID STATION_2 = UUID.fromString("00000000-0000-0000-0000-000000000002");
@@ -70,7 +74,7 @@ class StationControllerTest {
     @Test
     void resolveStationByNfc_public200() throws Exception {
         when(stationQueryService.resolveStationByNfc("NFC_1")).thenReturn(
-                StationDetailResponse.builder()
+                StationDetailView.builder()
                         .id(STATION_1)
                         .code("S1")
                         .name("Central")
@@ -87,7 +91,7 @@ class StationControllerTest {
     @Test
     void resolveStationByQr_public200() throws Exception {
         when(stationQueryService.resolveStationByQr("QR_2")).thenReturn(
-                StationDetailResponse.builder()
+                StationDetailView.builder()
                         .id(STATION_2)
                         .code("S2")
                         .name("Airport")
@@ -105,7 +109,7 @@ class StationControllerTest {
     @WithMockUser(roles = "ADMIN")
     void stationStats_ok() throws Exception {
         when(stationQueryService.stationStats()).thenReturn(List.of(
-                StationStatsResponse.builder()
+                StationStatsView.builder()
                         .stationId(STATION_1)
                         .stationName("A")
                         .lineName("L1")
@@ -126,10 +130,25 @@ class StationControllerTest {
     }
 
     @Test
+    @WithMockUser(authorities = "INTERNAL")
+    void incrementCollectorCount_ok() throws Exception {
+        mockMvc.perform(patch("/api/v1/stations/" + STATION_1 + "/collector-count"))
+                .andExpect(status().isOk());
+        verify(stationCommandService).incrementCollectorCount(STATION_1);
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void incrementCollectorCount_forbiddenWithoutInternalAuthority() throws Exception {
+        mockMvc.perform(patch("/api/v1/stations/" + STATION_1 + "/collector-count"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @WithMockUser(roles = "ADMIN")
     void uploadStationImage_ok() throws Exception {
         when(stationCommandService.uploadStationImage(eq(STATION_5), any()))
-                .thenReturn(new metro.ExoticStamp.modules.metro.presentation.dto.response.StationImageUploadResponse(
+                .thenReturn(new StationImageUploadView(
                         "http://localhost/uploads/x.jpg"));
 
         MockMultipartFile file = new MockMultipartFile("file", "a.jpg", "image/jpeg", new byte[20]);

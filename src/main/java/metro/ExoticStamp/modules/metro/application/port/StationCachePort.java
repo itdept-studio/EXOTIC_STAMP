@@ -1,24 +1,23 @@
 package metro.ExoticStamp.modules.metro.application.port;
 
-import java.util.UUID;
-
-import metro.ExoticStamp.modules.metro.presentation.dto.response.StationDetailResponse;
+import metro.ExoticStamp.modules.metro.application.view.StationDetailView;
 
 import java.util.Optional;
+import java.util.UUID;
 
 public interface StationCachePort {
 
-    Optional<StationDetailResponse> getByNfcTagId(String nfcTagId);
+    Optional<StationDetailView> getByNfcTagId(String nfcTagId);
 
-    Optional<StationDetailResponse> getByQrToken(String qrToken);
+    Optional<StationDetailView> getByQrToken(String qrToken);
 
-    Optional<StationDetailResponse> getByStationId(UUID stationId);
+    Optional<StationDetailView> getByStationId(UUID stationId);
 
-    void putByNfcTagId(String nfcTagId, StationDetailResponse value);
+    void putByNfcTagId(String nfcTagId, StationDetailView value);
 
-    void putByQrToken(String qrToken, StationDetailResponse value);
+    void putByQrToken(String qrToken, StationDetailView value);
 
-    void putByStationId(UUID stationId, StationDetailResponse value);
+    void putByStationId(UUID stationId, StationDetailView value);
 
     void evictByNfcTagId(String nfcTagId);
 
@@ -26,6 +25,3 @@ public interface StationCachePort {
 
     void evictDetailByStationId(UUID stationId);
 }
-
-
-

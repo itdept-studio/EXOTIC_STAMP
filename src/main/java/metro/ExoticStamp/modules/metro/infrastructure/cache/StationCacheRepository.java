@@ -1,26 +1,21 @@
 package metro.ExoticStamp.modules.metro.infrastructure.cache;
 
-import java.util.UUID;
-
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
 import metro.ExoticStamp.config.CacheProperties;
 import metro.ExoticStamp.infra.cache.BaseCacheRepository;
 import metro.ExoticStamp.modules.metro.application.port.StationCachePort;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.StationDetailResponse;
+import metro.ExoticStamp.modules.metro.application.view.StationDetailView;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.time.Duration;
 import java.util.Optional;
+import java.util.UUID;
 
-/**
- * Station hot-path and detail cache. Keys: {@code station:nfc:*}, {@code station:qr:*}, {@code station:detail:*}.
- * Extends {@link BaseCacheRepository} for shared metrics/TTL wiring; string-key lookups use explicit key builders.
- */
 @Slf4j
 @Repository
-public class StationCacheRepository extends BaseCacheRepository<StationDetailResponse> implements StationCachePort {
+public class StationCacheRepository extends BaseCacheRepository<StationDetailView> implements StationCachePort {
 
     private static final String NFC_SUFFIX = "nfc:";
     private static final String QR_SUFFIX = "qr:";
@@ -50,37 +45,37 @@ public class StationCacheRepository extends BaseCacheRepository<StationDetailRes
     }
 
     @Override
-    protected Class<StationDetailResponse> type() {
-        return StationDetailResponse.class;
+    protected Class<StationDetailView> type() {
+        return StationDetailView.class;
     }
 
     @Override
-    public Optional<StationDetailResponse> getByNfcTagId(String nfcTagId) {
-        return getString(prefix() + NFC_SUFFIX + nfcTagId, scanTtl);
+    public Optional<StationDetailView> getByNfcTagId(String nfcTagId) {
+        return getString(prefix() + NFC_SUFFIX + nfcTagId);
     }
 
     @Override
-    public Optional<StationDetailResponse> getByQrToken(String qrToken) {
-        return getString(prefix() + QR_SUFFIX + qrToken, scanTtl);
+    public Optional<StationDetailView> getByQrToken(String qrToken) {
+        return getString(prefix() + QR_SUFFIX + qrToken);
     }
 
     @Override
-    public Optional<StationDetailResponse> getByStationId(UUID stationId) {
-        return getString(prefix() + DETAIL_SUFFIX + stationId, detailTtl);
+    public Optional<StationDetailView> getByStationId(UUID stationId) {
+        return getString(prefix() + DETAIL_SUFFIX + stationId);
     }
 
     @Override
-    public void putByNfcTagId(String nfcTagId, StationDetailResponse value) {
+    public void putByNfcTagId(String nfcTagId, StationDetailView value) {
         putString(prefix() + NFC_SUFFIX + nfcTagId, value, scanTtl);
     }
 
     @Override
-    public void putByQrToken(String qrToken, StationDetailResponse value) {
+    public void putByQrToken(String qrToken, StationDetailView value) {
         putString(prefix() + QR_SUFFIX + qrToken, value, scanTtl);
     }
 
     @Override
-    public void putByStationId(UUID stationId, StationDetailResponse value) {
+    public void putByStationId(UUID stationId, StationDetailView value) {
         putString(prefix() + DETAIL_SUFFIX + stationId, value, detailTtl);
     }
 
@@ -105,7 +100,7 @@ public class StationCacheRepository extends BaseCacheRepository<StationDetailRes
         }
     }
 
-    private Optional<StationDetailResponse> getString(String key, Duration ttl) {
+    private Optional<StationDetailView> getString(String key) {
         try {
             Object raw = redisTemplate.opsForValue().get(key);
             if (raw == null) {
@@ -121,7 +116,7 @@ public class StationCacheRepository extends BaseCacheRepository<StationDetailRes
         }
     }
 
-    private void putString(String key, StationDetailResponse value, Duration ttl) {
+    private void putString(String key, StationDetailView value, Duration ttl) {
         try {
             redisTemplate.opsForValue().set(key, value, ttl);
         } catch (Exception e) {
@@ -137,6 +132,3 @@ public class StationCacheRepository extends BaseCacheRepository<StationDetailRes
         }
     }
 }
-
-
-

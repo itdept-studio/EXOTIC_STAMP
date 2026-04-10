@@ -2,14 +2,18 @@ package metro.ExoticStamp.modules.collection.application.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import metro.ExoticStamp.common.utils.GeoDistance;
 import metro.ExoticStamp.modules.collection.application.command.CollectStampCommand;
 import metro.ExoticStamp.modules.collection.application.port.UserStampCachePort;
 import metro.ExoticStamp.modules.collection.application.view.ProgressView;
 import metro.ExoticStamp.modules.collection.application.view.StampCollectView;
 import metro.ExoticStamp.modules.collection.config.CollectionProperties;
 import metro.ExoticStamp.modules.collection.domain.event.StampCollectedEvent;
+import metro.ExoticStamp.modules.collection.domain.exception.CampaignNotActiveException;
 import metro.ExoticStamp.modules.collection.domain.exception.CampaignNotFoundException;
+import metro.ExoticStamp.modules.collection.domain.exception.GpsVerificationFailedException;
 import metro.ExoticStamp.modules.collection.domain.exception.InvalidRequestException;
+import metro.ExoticStamp.modules.collection.domain.exception.InvalidScanInputException;
 import metro.ExoticStamp.modules.collection.domain.exception.InvalidStationException;
 import metro.ExoticStamp.modules.collection.domain.exception.StampAlreadyCollectedException;
 import metro.ExoticStamp.modules.collection.domain.model.Campaign;
@@ -66,10 +70,10 @@ public class CollectionCommandService {
         boolean hasNfc = cmd.nfcTagId() != null && !cmd.nfcTagId().isBlank();
         boolean hasQr = cmd.qrToken() != null && !cmd.qrToken().isBlank();
         if (!hasNfc && !hasQr) {
-            throw new InvalidRequestException("Either nfcTagId or qrToken is required");
+            throw new InvalidScanInputException("Either nfcTagId or qrToken is required");
         }
         if (hasNfc && hasQr) {
-            throw new InvalidRequestException("Provide only one of nfcTagId or qrToken");
+            throw new InvalidScanInputException("Provide only one of nfcTagId or qrToken");
         }
 
         String idempotencyKeyStr = cmd.idempotencyKey().toString();
@@ -89,6 +93,8 @@ public class CollectionCommandService {
 
         Campaign campaign = resolveCampaign(station.lineId(), cmd.campaignId());
 
+        boolean gpsVerified = verifyGpsIfEnabled(cmd, station);
+
         domainService.assertNotAlreadyCollected(cmd.userId(), station.id(), campaign.getId());
 
         StampDesign design = stampDesignRepository.findActiveByCampaignIdAndStationId(campaign.getId(), station.id())
@@ -103,7 +109,7 @@ public class CollectionCommandService {
                 .collectedAt(now)
                 .latitude(cmd.latitude())
                 .longitude(cmd.longitude())
-                .gpsVerified(false)
+                .gpsVerified(gpsVerified)
                 .collectMethod(collectMethod)
                 .deviceFingerprint(cmd.deviceFingerprint())
                 .idempotencyKey(idempotencyKeyStr)
@@ -166,12 +172,52 @@ public class CollectionCommandService {
                 || (msg.contains("user_stamps") && msg.contains("user_id") && msg.contains("station_id"));
     }
 
-    private Campaign resolveCampaign(UUID lineId, UUID campaignId) {
-        if (campaignId != null) {
-            return campaignRepository.findById(campaignId).orElseThrow(() -> new CampaignNotFoundException(campaignId));
+    private boolean verifyGpsIfEnabled(CollectStampCommand cmd, MetroStationView station) {
+        if (!collectionProperties.isGpsVerificationEnabled()) {
+            return false;
         }
-        return campaignRepository.findDefaultByLineId(lineId)
-                .orElseThrow(() -> new CampaignNotFoundException(null));
+        CollectionProperties.Gps gps = collectionProperties.getGps();
+        if (cmd.latitude() == null || cmd.longitude() == null) {
+            throw new GpsVerificationFailedException("GPS coordinates required");
+        }
+        if (station.latitude() == null || station.longitude() == null) {
+            throw new GpsVerificationFailedException("Station coordinates not configured");
+        }
+        double distanceMeters = GeoDistance.metersBetween(
+                cmd.latitude().doubleValue(),
+                cmd.longitude().doubleValue(),
+                station.latitude().doubleValue(),
+                station.longitude().doubleValue(),
+                gps.getEarthRadiusMeters());
+        if (distanceMeters > gps.getMaxDistanceMeters()) {
+            throw new GpsVerificationFailedException("GPS verification failed: outside allowed radius");
+        }
+        return true;
+    }
+
+    private Campaign resolveCampaign(UUID stationLineId, UUID campaignId) {
+        Campaign campaign;
+        if (campaignId != null) {
+            campaign = campaignRepository.findById(campaignId).orElseThrow(() -> new CampaignNotFoundException(campaignId));
+        } else {
+            campaign = campaignRepository.findDefaultByLineId(stationLineId)
+                    .orElseThrow(() -> new CampaignNotFoundException(null));
+        }
+        validateCampaignForCollect(campaign, stationLineId);
+        return campaign;
+    }
+
+    private void validateCampaignForCollect(Campaign campaign, UUID stationLineId) {
+        if (campaign.getLineId() == null || !campaign.getLineId().equals(stationLineId)) {
+            throw new CampaignNotFoundException(campaign.getId());
+        }
+        if (!campaign.isActive()) {
+            throw new CampaignNotActiveException(campaign.getId());
+        }
+        LocalDateTime now = LocalDateTime.now(clock);
+        if (now.isBefore(campaign.getStartDate()) || now.isAfter(campaign.getEndDate())) {
+            throw new CampaignNotActiveException(campaign.getId());
+        }
     }
 
     private StampCollectView buildResponse(UserStamp userStamp, boolean isNew) {

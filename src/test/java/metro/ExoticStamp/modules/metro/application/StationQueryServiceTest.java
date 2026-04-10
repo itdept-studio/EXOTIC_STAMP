@@ -2,12 +2,12 @@ package metro.ExoticStamp.modules.metro.application;
 
 import metro.ExoticStamp.modules.metro.application.mapper.MetroAppMapper;
 import metro.ExoticStamp.modules.metro.application.port.StationCachePort;
+import metro.ExoticStamp.modules.metro.application.view.StationDetailView;
 import metro.ExoticStamp.modules.metro.domain.exception.StationInactiveException;
 import metro.ExoticStamp.modules.metro.domain.exception.StationNotFoundException;
 import metro.ExoticStamp.modules.metro.domain.model.Station;
 import metro.ExoticStamp.modules.metro.domain.repository.LineRepository;
 import metro.ExoticStamp.modules.metro.domain.repository.StationRepository;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.StationDetailResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,7 +64,7 @@ class StationQueryServiceTest {
         when(stationCachePort.getByNfcTagId("NFC_10")).thenReturn(Optional.empty());
         when(stationRepository.findByNfcTagId("NFC_10")).thenReturn(Optional.of(station));
 
-        StationDetailResponse res = service.resolveStationByNfc("NFC_10");
+        StationDetailView res = service.resolveStationByNfc("NFC_10");
 
         assertEquals(STATION_10, res.getId());
         assertEquals("Central", res.getName());
@@ -96,7 +96,7 @@ class StationQueryServiceTest {
         when(stationCachePort.getByQrToken("QR_20")).thenReturn(Optional.empty());
         when(stationRepository.findByQrCodeToken("QR_20")).thenReturn(Optional.of(station));
 
-        StationDetailResponse res = service.resolveStationByQr("QR_20");
+        StationDetailView res = service.resolveStationByQr("QR_20");
 
         assertEquals(STATION_20, res.getId());
         assertEquals("Airport", res.getName());

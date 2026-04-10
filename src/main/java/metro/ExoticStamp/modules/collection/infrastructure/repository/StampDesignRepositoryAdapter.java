@@ -46,5 +46,10 @@ public class StampDesignRepositoryAdapter implements StampDesignRepository {
     public StampDesign save(StampDesign stampDesign) {
         return jpaStampDesignRepository.save(stampDesign);
     }
+
+    @Override
+    public List<StampDesign> findByCampaignIdOrderByNameAsc(UUID campaignId) {
+        return jpaStampDesignRepository.findByCampaignIdOrderByNameAsc(campaignId);
+    }
 }
 

@@ -178,6 +178,22 @@ class CollectionControllerTest {
     }
 
     @Test
+    void collect_bothNfcAndQr_returnsInvalidScanMethod() throws Exception {
+        CollectStampRequest req = new CollectStampRequest();
+        req.setIdempotencyKey(UUID.randomUUID());
+        req.setNfcTagId("NFC1");
+        req.setQrToken("QR1");
+        req.setDeviceFingerprint("1234567890");
+
+        mockMvc.perform(post("/api/v1/collections/scan")
+                        .with(user(testUser()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(req)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_SCAN_METHOD"));
+    }
+
+    @Test
     void collect_stationNotFound_returns404() throws Exception {
         when(commandService.collectStamp(any())).thenThrow(new StationNotFoundException("nfcTagId", "unknown"));
         when(userStampAppMapper.resolveCollectMethod(any(), any())).thenReturn(metro.ExoticStamp.modules.collection.domain.model.CollectMethod.NFC);

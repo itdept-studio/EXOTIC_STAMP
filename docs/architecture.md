@@ -210,8 +210,8 @@ Khi cần thay đổi các quyết định này, phải có decision note kèm l
   - `Auth`
   - `User`
   - `RBAC`
-  - `Metro`
-  - `Admin Metro`
+  - `Lines`
+  - `Stations`
 
 ### 13.2 Local testing entry points
 
@@ -225,7 +225,8 @@ Khi cần thay đổi các quyết định này, phải có decision note kèm l
 3. Test secured endpoints in this order:
    - `User` APIs (`/api/v1/users/*`)
    - `RBAC` APIs (`/api/v1/roles/*`, `/api/v1/permissions/*`)
-   - `Admin Metro` APIs (`/api/v1/admin/metro/*`)
+   - `Lines` APIs (`/api/v1/lines/*`)
+   - `Stations` APIs (`/api/v1/stations/*`)
 4. For refresh flow, call `POST /api/v1/auth/refresh` after login (refresh token comes from cookie).
 
 ### 13.4 Definition boundaries

@@ -9,7 +9,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -76,6 +78,25 @@ public class UserStampRepositoryAdapter implements UserStampRepository {
     @Override
     public long countDistinctStationsByUserIdAndCampaignId(UUID userId, UUID campaignId) {
         return jpaUserStampRepository.countDistinctStationsByUserIdAndCampaignId(userId, campaignId);
+    }
+
+    @Override
+    public long countAll() {
+        return jpaUserStampRepository.count();
+    }
+
+    @Override
+    public Map<UUID, Long> countStampsByCampaignId() {
+        List<Object[]> rows = jpaUserStampRepository.countGroupedByCampaignId();
+        Map<UUID, Long> map = new HashMap<>();
+        for (Object[] row : rows) {
+            UUID campaignId = (UUID) row[0];
+            long cnt = ((Number) row[1]).longValue();
+            if (campaignId != null) {
+                map.put(campaignId, cnt);
+            }
+        }
+        return map;
     }
 }
 

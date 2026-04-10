@@ -69,6 +69,11 @@ collection:
   idempotency-window: 1h
   max-page-size: 50
   default-page-size: 20
+  stamp-collected-event-dedup-ttl: 48h
+  gps:
+    verification-enabled: true
+    max-distance-meters: 150
+    earth-radius-meters: 6371000
 
 storage:
   provider: local

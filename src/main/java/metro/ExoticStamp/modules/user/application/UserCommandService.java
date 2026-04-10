@@ -4,13 +4,13 @@ import metro.ExoticStamp.modules.user.application.command.CreateUserCommand;
 import metro.ExoticStamp.modules.user.application.command.UpdateUserCommand;
 import metro.ExoticStamp.modules.user.application.mapper.UserAppMapper;
 import metro.ExoticStamp.modules.user.application.port.UserCachePort;
+import metro.ExoticStamp.modules.user.application.view.UserView;
 import metro.ExoticStamp.modules.user.domain.event.UserCreatedEvent;
 import metro.ExoticStamp.modules.user.domain.exception.UserNotFoundException;
 import metro.ExoticStamp.modules.user.domain.model.User;
 import metro.ExoticStamp.modules.user.domain.model.UserStatus;
 import metro.ExoticStamp.modules.user.domain.repository.UserRepository;
 import metro.ExoticStamp.modules.user.domain.service.UserDomainService;
-import metro.ExoticStamp.modules.user.presentation.dto.response.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -33,7 +33,7 @@ public class UserCommandService {
     private final UserCachePort cachePort;
 
     @Transactional
-    public UserResponse createUser(CreateUserCommand cmd) {
+    public UserView createUser(CreateUserCommand cmd) {
         domainService.validateUniqueEmail(cmd.getEmail());
         domainService.validateUniqueUsername(cmd.getUsername());
         domainService.validateUniquePhone(cmd.getPhoneNumber());
@@ -60,11 +60,11 @@ public class UserCommandService {
             }
         });
 
-        return UserAppMapper.toResponse(saved);
+        return UserAppMapper.toView(saved);
     }
 
     @Transactional
-    public UserResponse updateUser(UpdateUserCommand cmd) {
+    public UserView updateUser(UpdateUserCommand cmd) {
         User user = userRepository.findById(cmd.getId())
                 .orElseThrow(() -> new UserNotFoundException(cmd.getId()));
 
@@ -75,7 +75,7 @@ public class UserCommandService {
         if (cmd.getDob() != null) user.setDob(cmd.getDob());
         if (cmd.getGender() != null) user.setGender(cmd.getGender());
 
-        UserResponse res = UserAppMapper.toResponse(userRepository.save(user));
+        UserView res = UserAppMapper.toView(userRepository.save(user));
         cachePort.evict(cmd.getId());
         return res;
     }

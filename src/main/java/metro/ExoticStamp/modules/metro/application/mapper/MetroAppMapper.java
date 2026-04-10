@@ -1,11 +1,11 @@
 package metro.ExoticStamp.modules.metro.application.mapper;
 
+import metro.ExoticStamp.modules.metro.application.view.LineDetailView;
+import metro.ExoticStamp.modules.metro.application.view.LineView;
+import metro.ExoticStamp.modules.metro.application.view.StationDetailView;
+import metro.ExoticStamp.modules.metro.application.view.StationView;
 import metro.ExoticStamp.modules.metro.domain.model.Line;
 import metro.ExoticStamp.modules.metro.domain.model.Station;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.LineDetailResponse;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.LineResponse;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.StationDetailResponse;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.StationResponse;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -13,12 +13,11 @@ import java.util.List;
 @Component
 public class MetroAppMapper {
 
-    public LineResponse toLineResponse(Line line) {
+    public LineView toLineView(Line line) {
         if (line == null) {
             return null;
         }
-
-        return LineResponse.builder()
+        return LineView.builder()
                 .id(line.getId())
                 .code(line.getCode())
                 .name(line.getName())
@@ -28,26 +27,26 @@ public class MetroAppMapper {
                 .build();
     }
 
-    public LineDetailResponse toLineDetailResponse(Line line, List<StationResponse> stationSummaries) {
+    public LineDetailView toLineDetailView(Line line, List<StationView> stationViews) {
         if (line == null) {
             return null;
         }
-        return LineDetailResponse.builder()
+        return LineDetailView.builder()
                 .id(line.getId())
                 .code(line.getCode())
                 .name(line.getName())
                 .color(line.getColor())
                 .totalStations(line.getTotalStations())
                 .isActive(Boolean.TRUE.equals(line.getIsActive()))
-                .stations(stationSummaries)
+                .stations(stationViews)
                 .build();
     }
 
-    public StationResponse toStationSummary(Station station) {
+    public StationView toStationView(Station station) {
         if (station == null) {
             return null;
         }
-        return StationResponse.builder()
+        return StationView.builder()
                 .id(station.getId())
                 .lineId(station.getLineId())
                 .code(station.getCode())
@@ -63,11 +62,11 @@ public class MetroAppMapper {
                 .build();
     }
 
-    public StationDetailResponse toStationDetail(Station station, boolean includeSensitive) {
+    public StationDetailView toStationDetailView(Station station, boolean includeSensitive) {
         if (station == null) {
             return null;
         }
-        StationDetailResponse.StationDetailResponseBuilder b = StationDetailResponse.builder()
+        StationDetailView.StationDetailViewBuilder builder = StationDetailView.builder()
                 .id(station.getId())
                 .lineId(station.getLineId())
                 .code(station.getCode())
@@ -81,9 +80,9 @@ public class MetroAppMapper {
                 .collectorCount(station.getCollectorCount())
                 .isActive(Boolean.TRUE.equals(station.getIsActive()));
         if (includeSensitive) {
-            b.nfcTagId(station.getNfcTagId())
+            builder.nfcTagId(station.getNfcTagId())
                     .qrCodeToken(station.getQrCodeToken());
         }
-        return b.build();
+        return builder.build();
     }
 }

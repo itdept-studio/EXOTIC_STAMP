@@ -7,20 +7,20 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import metro.ExoticStamp.common.security.SecurityPrincipalSupport;
 import metro.ExoticStamp.common.response.ApiResponse;
 import metro.ExoticStamp.common.response.PageResponse;
 import metro.ExoticStamp.modules.collection.application.command.CollectStampCommand;
 import metro.ExoticStamp.modules.collection.application.mapper.UserStampAppMapper;
 import metro.ExoticStamp.modules.collection.application.service.CollectionCommandService;
 import metro.ExoticStamp.modules.collection.application.service.CollectionQueryService;
-import metro.ExoticStamp.modules.collection.domain.exception.InvalidRequestException;
+import metro.ExoticStamp.modules.collection.domain.exception.InvalidScanInputException;
 import metro.ExoticStamp.modules.collection.presentation.mapper.CollectionResponseMapper;
 import metro.ExoticStamp.modules.collection.presentation.request.CollectStampRequest;
 import metro.ExoticStamp.modules.collection.presentation.response.ProgressResponse;
 import metro.ExoticStamp.modules.collection.presentation.response.StampBookResponse;
 import metro.ExoticStamp.modules.collection.presentation.response.StampCollectResponse;
 import metro.ExoticStamp.modules.collection.presentation.response.UserStampResponse;
-import metro.ExoticStamp.modules.user.domain.model.User;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -66,10 +66,10 @@ public class CollectionController {
         boolean hasNfc = req.getNfcTagId() != null && !req.getNfcTagId().isBlank();
         boolean hasQr = req.getQrToken() != null && !req.getQrToken().isBlank();
         if (!hasNfc && !hasQr) {
-            throw new InvalidRequestException("Either nfcTagId or qrToken is required");
+            throw new InvalidScanInputException("Either nfcTagId or qrToken is required");
         }
         if (hasNfc && hasQr) {
-            throw new InvalidRequestException("Provide only one of nfcTagId or qrToken");
+            throw new InvalidScanInputException("Provide only one of nfcTagId or qrToken");
         }
 
         CollectStampCommand cmd = new CollectStampCommand(
@@ -160,12 +160,6 @@ public class CollectionController {
     }
 
     private UUID extractUserId(UserDetails principal) {
-        if (principal == null) {
-            throw new IllegalStateException("Missing principal");
-        }
-        if (principal instanceof User u) {
-            return u.getId();
-        }
-        throw new IllegalStateException("Unsupported principal type: " + principal.getClass().getName());
+        return SecurityPrincipalSupport.requireUserId(principal);
     }
 }

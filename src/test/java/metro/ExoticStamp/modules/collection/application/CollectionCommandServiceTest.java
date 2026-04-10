@@ -8,6 +8,7 @@ import metro.ExoticStamp.modules.collection.application.view.ProgressView;
 import metro.ExoticStamp.modules.collection.application.view.StampCollectView;
 import metro.ExoticStamp.modules.collection.config.CollectionProperties;
 import metro.ExoticStamp.modules.collection.domain.event.StampCollectedEvent;
+import metro.ExoticStamp.modules.collection.domain.exception.GpsVerificationFailedException;
 import metro.ExoticStamp.modules.collection.domain.exception.StampAlreadyCollectedException;
 import metro.ExoticStamp.modules.collection.domain.model.Campaign;
 import metro.ExoticStamp.modules.collection.domain.model.CollectMethod;
@@ -30,6 +31,7 @@ import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -91,16 +93,7 @@ class CollectionCommandServiceTest {
         when(domainService.resolveIdempotentStamp(eq(idempotencyKey.toString()), eq(USER_ID), any())).thenReturn(Optional.empty());
         when(stationReadPort.resolveStationViewByNfc("NFC1"))
                 .thenReturn(MetroStationView.builder().id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true).build());
-        Campaign campaign = Campaign.builder()
-                .lineId(LINE_ID)
-                .isDefault(true)
-                .isActive(true)
-                .code("DEF")
-                .name("C")
-                .startDate(LocalDateTime.now())
-                .endDate(LocalDateTime.now().plusDays(1))
-                .build();
-        campaign.setId(CAMPAIGN_ID);
+        Campaign campaign = defaultCampaign();
         when(campaignRepository.findDefaultByLineId(LINE_ID)).thenReturn(Optional.of(campaign));
 
         StampDesign design = StampDesign.builder().campaignId(CAMPAIGN_ID).stationId(STATION_ID).name("S").artworkUrl("https://cdn/x.png").isActive(true).isLimited(false).build();
@@ -152,8 +145,7 @@ class CollectionCommandServiceTest {
         when(stationReadPort.resolveStationViewByQr("QR1"))
                 .thenReturn(MetroStationView.builder().id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true).build());
 
-        Campaign c = Campaign.builder().lineId(LINE_ID).isDefault(true).isActive(true).code("DEF").name("C").startDate(LocalDateTime.now()).endDate(LocalDateTime.now().plusDays(1)).build();
-        c.setId(CAMPAIGN_ID);
+        Campaign c = defaultCampaign();
         when(campaignRepository.findDefaultByLineId(LINE_ID)).thenReturn(Optional.of(c));
 
         doThrow(new StampAlreadyCollectedException(STATION_ID))
@@ -248,10 +240,7 @@ class CollectionCommandServiceTest {
         when(domainService.resolveIdempotentStamp(eq(idempotencyKey.toString()), eq(USER_ID), any())).thenReturn(Optional.empty());
         when(stationReadPort.resolveStationViewByNfc("NFC1"))
                 .thenReturn(MetroStationView.builder().id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true).build());
-        Campaign campaign = Campaign.builder()
-                .lineId(LINE_ID).isDefault(true).isActive(true).code("DEF").name("C")
-                .startDate(LocalDateTime.now()).endDate(LocalDateTime.now().plusDays(1)).build();
-        campaign.setId(CAMPAIGN_ID);
+        Campaign campaign = defaultCampaign();
         when(campaignRepository.findDefaultByLineId(LINE_ID)).thenReturn(Optional.of(campaign));
         StampDesign design = StampDesign.builder().campaignId(CAMPAIGN_ID).stationId(STATION_ID).name("S").artworkUrl("https://cdn/x.png").isActive(true).isLimited(false).build();
         design.setId(DESIGN_ID);
@@ -281,10 +270,7 @@ class CollectionCommandServiceTest {
         when(domainService.resolveIdempotentStamp(anyString(), eq(USER_ID), any())).thenReturn(Optional.empty());
         when(stationReadPort.resolveStationViewByNfc("NFC1"))
                 .thenReturn(MetroStationView.builder().id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true).build());
-        Campaign campaign = Campaign.builder()
-                .lineId(LINE_ID).isDefault(true).isActive(true).code("DEF").name("C")
-                .startDate(LocalDateTime.now()).endDate(LocalDateTime.now().plusDays(1)).build();
-        campaign.setId(CAMPAIGN_ID);
+        Campaign campaign = defaultCampaign();
         when(campaignRepository.findDefaultByLineId(LINE_ID)).thenReturn(Optional.of(campaign));
         StampDesign design = StampDesign.builder().campaignId(CAMPAIGN_ID).stationId(STATION_ID).name("S").artworkUrl("u").isActive(true).isLimited(false).build();
         design.setId(DESIGN_ID);
@@ -312,5 +298,130 @@ class CollectionCommandServiceTest {
         );
 
         assertDoesNotThrow(() -> service.collectStamp(cmd));
+    }
+
+    @Test
+    void collect_gpsWithinThreshold_succeeds() {
+        when(collectionProperties.isGpsVerificationEnabled()).thenReturn(true);
+        CollectionProperties.Gps gps = new CollectionProperties.Gps();
+        gps.setMaxDistanceMeters(200);
+        gps.setEarthRadiusMeters(6371000);
+        when(collectionProperties.getGps()).thenReturn(gps);
+
+        UUID idempotencyKey = UUID.randomUUID();
+        when(domainService.resolveIdempotentStamp(anyString(), eq(USER_ID), any())).thenReturn(Optional.empty());
+        when(stationReadPort.resolveStationViewByNfc("NFC1"))
+                .thenReturn(MetroStationView.builder()
+                        .id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true)
+                        .latitude(BigDecimal.valueOf(10.0))
+                        .longitude(BigDecimal.valueOf(20.0))
+                        .build());
+        when(campaignRepository.findDefaultByLineId(LINE_ID)).thenReturn(Optional.of(defaultCampaign()));
+        StampDesign design = StampDesign.builder().campaignId(CAMPAIGN_ID).stationId(STATION_ID).name("S").artworkUrl("u").isActive(true).isLimited(false).build();
+        design.setId(DESIGN_ID);
+        when(stampDesignRepository.findActiveByCampaignIdAndStationId(CAMPAIGN_ID, STATION_ID)).thenReturn(Optional.of(design));
+        when(userStampRepository.save(any(UserStamp.class))).thenAnswer(inv -> {
+            UserStamp us = inv.getArgument(0);
+            us.setId(STAMP_ID);
+            assertTrue(us.isGpsVerified());
+            return us;
+        });
+        when(collectionQueryService.computeProgress(USER_ID, LINE_ID, CAMPAIGN_ID))
+                .thenReturn(ProgressView.builder().lineId(LINE_ID).collected(1).total(10).percentage(10).build());
+
+        CollectStampCommand cmd = new CollectStampCommand(
+                USER_ID,
+                idempotencyKey,
+                "NFC1",
+                null,
+                null,
+                "fp",
+                BigDecimal.valueOf(10.0),
+                BigDecimal.valueOf(20.0),
+                CollectMethod.NFC
+        );
+
+        assertDoesNotThrow(() -> service.collectStamp(cmd));
+    }
+
+    @Test
+    void collect_gpsOutsideThreshold_fails() {
+        when(collectionProperties.isGpsVerificationEnabled()).thenReturn(true);
+        CollectionProperties.Gps gps = new CollectionProperties.Gps();
+        gps.setMaxDistanceMeters(50);
+        gps.setEarthRadiusMeters(6371000);
+        when(collectionProperties.getGps()).thenReturn(gps);
+
+        UUID idempotencyKey = UUID.randomUUID();
+        when(domainService.resolveIdempotentStamp(anyString(), eq(USER_ID), any())).thenReturn(Optional.empty());
+        when(stationReadPort.resolveStationViewByNfc("NFC1"))
+                .thenReturn(MetroStationView.builder()
+                        .id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true)
+                        .latitude(BigDecimal.valueOf(10.0))
+                        .longitude(BigDecimal.valueOf(20.0))
+                        .build());
+        when(campaignRepository.findDefaultByLineId(LINE_ID)).thenReturn(Optional.of(defaultCampaign()));
+
+        CollectStampCommand cmd = new CollectStampCommand(
+                USER_ID,
+                idempotencyKey,
+                "NFC1",
+                null,
+                null,
+                "fp",
+                BigDecimal.valueOf(10.5),
+                BigDecimal.valueOf(20.5),
+                CollectMethod.NFC
+        );
+
+        assertThrows(GpsVerificationFailedException.class, () -> service.collectStamp(cmd));
+    }
+
+    @Test
+    void collect_gpsMissingClientCoordsWhenEnabled_fails() {
+        when(collectionProperties.isGpsVerificationEnabled()).thenReturn(true);
+        CollectionProperties.Gps gps = new CollectionProperties.Gps();
+        gps.setMaxDistanceMeters(200);
+        gps.setEarthRadiusMeters(6371000);
+        when(collectionProperties.getGps()).thenReturn(gps);
+
+        UUID idempotencyKey = UUID.randomUUID();
+        when(domainService.resolveIdempotentStamp(anyString(), eq(USER_ID), any())).thenReturn(Optional.empty());
+        when(stationReadPort.resolveStationViewByNfc("NFC1"))
+                .thenReturn(MetroStationView.builder()
+                        .id(STATION_ID).lineId(LINE_ID).name("Central").sequence(1).active(true)
+                        .latitude(BigDecimal.valueOf(10.0))
+                        .longitude(BigDecimal.valueOf(20.0))
+                        .build());
+        when(campaignRepository.findDefaultByLineId(LINE_ID)).thenReturn(Optional.of(defaultCampaign()));
+
+        CollectStampCommand cmd = new CollectStampCommand(
+                USER_ID,
+                idempotencyKey,
+                "NFC1",
+                null,
+                null,
+                "fp",
+                null,
+                null,
+                CollectMethod.NFC
+        );
+
+        assertThrows(GpsVerificationFailedException.class, () -> service.collectStamp(cmd));
+    }
+
+    private Campaign defaultCampaign() {
+        LocalDateTime now = LocalDateTime.now(clock);
+        Campaign campaign = Campaign.builder()
+                .lineId(LINE_ID)
+                .isDefault(true)
+                .isActive(true)
+                .code("DEF")
+                .name("C")
+                .startDate(now.minusDays(1))
+                .endDate(now.plusDays(1))
+                .build();
+        campaign.setId(CAMPAIGN_ID);
+        return campaign;
     }
 }

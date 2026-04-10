@@ -2,6 +2,7 @@ package metro.ExoticStamp.modules.metro.application.view;
 
 import lombok.Builder;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Builder
@@ -10,6 +11,8 @@ public record MetroStationView(
         UUID lineId,
         String name,
         Integer sequence,
-        boolean active
+        boolean active,
+        BigDecimal latitude,
+        BigDecimal longitude
 ) {
 }

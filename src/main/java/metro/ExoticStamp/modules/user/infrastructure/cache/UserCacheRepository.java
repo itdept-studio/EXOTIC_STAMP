@@ -3,7 +3,7 @@ package metro.ExoticStamp.modules.user.infrastructure.cache;
 import metro.ExoticStamp.config.CacheProperties;
 import metro.ExoticStamp.infra.cache.BaseCacheRepository;
 import metro.ExoticStamp.modules.user.application.port.UserCachePort;
-import metro.ExoticStamp.modules.user.presentation.dto.response.UserResponse;
+import metro.ExoticStamp.modules.user.application.view.UserView;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Repository;
@@ -11,7 +11,7 @@ import org.springframework.stereotype.Repository;
 import java.time.Duration;
 
 @Repository
-public class UserCacheRepository extends BaseCacheRepository<UserResponse> implements UserCachePort {
+public class UserCacheRepository extends BaseCacheRepository<UserView> implements UserCachePort {
 
     private final CacheProperties cacheProperties;
 
@@ -22,5 +22,5 @@ public class UserCacheRepository extends BaseCacheRepository<UserResponse> imple
 
     @Override protected String prefix()        { return "user:"; }
     @Override protected Duration ttl()         { return cacheProperties.getUserTtl(); }
-    @Override protected Class<UserResponse> type() { return UserResponse.class; }
+    @Override protected Class<UserView> type() { return UserView.class; }
 }

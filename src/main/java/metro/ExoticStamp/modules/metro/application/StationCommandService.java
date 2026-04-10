@@ -5,8 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import metro.ExoticStamp.common.exceptions.storage.InvalidFileException;
 import metro.ExoticStamp.infra.storage.FileValidator;
 import metro.ExoticStamp.infra.storage.StorageService;
+import metro.ExoticStamp.modules.metro.application.command.CreateStationCommand;
+import metro.ExoticStamp.modules.metro.application.command.RotateStationQrTokenCommand;
+import metro.ExoticStamp.modules.metro.application.command.UpdateStationCommand;
 import metro.ExoticStamp.modules.metro.application.mapper.MetroAppMapper;
 import metro.ExoticStamp.modules.metro.application.port.StationCachePort;
+import metro.ExoticStamp.modules.metro.application.view.StationDetailView;
+import metro.ExoticStamp.modules.metro.application.view.StationImageUploadView;
 import metro.ExoticStamp.modules.metro.domain.event.StationActivatedEvent;
 import metro.ExoticStamp.modules.metro.domain.event.StationDeactivatedEvent;
 import metro.ExoticStamp.modules.metro.domain.event.StationQrRotatedEvent;
@@ -15,18 +20,16 @@ import metro.ExoticStamp.modules.metro.domain.exception.DuplicateQrTokenExceptio
 import metro.ExoticStamp.modules.metro.domain.exception.DuplicateStationCodeException;
 import metro.ExoticStamp.modules.metro.domain.exception.DuplicateStationSequenceException;
 import metro.ExoticStamp.modules.metro.domain.exception.LineNotFoundException;
+import metro.ExoticStamp.modules.metro.domain.exception.StationInactiveException;
 import metro.ExoticStamp.modules.metro.domain.exception.StationNotFoundException;
 import metro.ExoticStamp.modules.metro.domain.model.Line;
 import metro.ExoticStamp.modules.metro.domain.model.Station;
 import metro.ExoticStamp.modules.metro.domain.repository.LineRepository;
 import metro.ExoticStamp.modules.metro.domain.repository.StationRepository;
 import metro.ExoticStamp.modules.rbac.application.support.RbacTransactionCallbacks;
-import metro.ExoticStamp.modules.metro.presentation.dto.request.CreateStationRequest;
-import metro.ExoticStamp.modules.metro.presentation.dto.request.RotateQrTokenRequest;
-import metro.ExoticStamp.modules.metro.presentation.dto.request.UpdateStationRequest;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.StationDetailResponse;
-import metro.ExoticStamp.modules.metro.presentation.dto.response.StationImageUploadResponse;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -49,25 +52,25 @@ public class StationCommandService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
-    public StationDetailResponse createStation(CreateStationRequest req) {
-        UUID lineId = req.getLineId();
+    public StationDetailView createStation(CreateStationCommand command) {
+        UUID lineId = command.getLineId();
         lineRepository.findById(lineId).orElseThrow(() -> new LineNotFoundException(lineId));
-        validateSequence(lineId, req.getSequence(), null);
-        validateNewStationCodes(lineId, req.getCode(), req.getNfcTagId(), req.getQrCodeToken());
+        validateSequence(lineId, command.getSequence(), null);
+        validateNewStationCodes(lineId, command.getCode(), command.getNfcTagId(), command.getQrCodeToken());
 
         LocalDateTime now = LocalDateTime.now();
-        boolean active = Boolean.TRUE.equals(req.getIsActive());
+        boolean active = Boolean.TRUE.equals(command.getIsActive());
         Station station = Station.builder()
                 .lineId(lineId)
-                .code(req.getCode().trim())
-                .name(req.getName().trim())
-                .sequence(req.getSequence())
-                .description(req.getDescription())
-                .historicalInfo(req.getHistoricalInfo())
-                .latitude(req.getLatitude())
-                .longitude(req.getLongitude())
-                .nfcTagId(blankToNull(req.getNfcTagId()))
-                .qrCodeToken(blankToNull(req.getQrCodeToken()))
+                .code(command.getCode().trim())
+                .name(command.getName().trim())
+                .sequence(command.getSequence())
+                .description(command.getDescription())
+                .historicalInfo(command.getHistoricalInfo())
+                .latitude(command.getLatitude())
+                .longitude(command.getLongitude())
+                .nfcTagId(blankToNull(command.getNfcTagId()))
+                .qrCodeToken(blankToNull(command.getQrCodeToken()))
                 .collectorCount(0)
                 .isActive(active)
                 .createdAt(now)
@@ -76,62 +79,61 @@ public class StationCommandService {
         if (active) {
             bumpLineTotalStations(lineId, 1);
         }
-        return mapper.toStationDetail(saved, true);
+        return mapper.toStationDetailView(saved, true);
     }
 
     @Transactional
-    public StationDetailResponse updateStation(UUID stationId, UpdateStationRequest req) {
+    public StationDetailView updateStation(UpdateStationCommand command) {
+        UUID stationId = command.getStationId();
         Station station = stationRepository.findById(stationId).orElseThrow(() -> new StationNotFoundException(stationId));
         String oldNfc = station.getNfcTagId();
         String oldQr = station.getQrCodeToken();
         boolean wasActive = Boolean.TRUE.equals(station.getIsActive());
 
-        if (req.getCode() != null && !req.getCode().isBlank()) {
-            String code = req.getCode().trim();
+        if (command.getCode() != null && !command.getCode().isBlank()) {
+            String code = command.getCode().trim();
             if (!code.equals(station.getCode()) && stationRepository.existsByCodeAndIdNot(code, stationId)) {
                 throw new DuplicateStationCodeException(code, station.getLineId());
             }
             station.setCode(code);
         }
-        if (req.getName() != null && !req.getName().isBlank()) {
-            station.setName(req.getName().trim());
+        if (command.getName() != null && !command.getName().isBlank()) {
+            station.setName(command.getName().trim());
         }
-        if (req.getSequence() != null) {
-            validateSequence(station.getLineId(), req.getSequence(), stationId);
-            station.setSequence(req.getSequence());
+        if (command.getSequence() != null) {
+            validateSequence(station.getLineId(), command.getSequence(), stationId);
+            station.setSequence(command.getSequence());
         }
-        if (req.getDescription() != null) {
-            station.setDescription(req.getDescription());
+        if (command.getDescription() != null) {
+            station.setDescription(command.getDescription());
         }
-        if (req.getHistoricalInfo() != null) {
-            station.setHistoricalInfo(req.getHistoricalInfo());
+        if (command.getHistoricalInfo() != null) {
+            station.setHistoricalInfo(command.getHistoricalInfo());
         }
-        if (req.getLatitude() != null) {
-            station.setLatitude(req.getLatitude());
+        if (command.getLatitude() != null) {
+            station.setLatitude(command.getLatitude());
         }
-        if (req.getLongitude() != null) {
-            station.setLongitude(req.getLongitude());
+        if (command.getLongitude() != null) {
+            station.setLongitude(command.getLongitude());
         }
-        if (req.getNfcTagId() != null) {
-            String nfc = blankToNull(req.getNfcTagId());
-            if (nfc != null && !Objects.equals(nfc, station.getNfcTagId())) {
-                if (stationRepository.existsByNfcTagIdAndIdNot(nfc, stationId)) {
-                    throw new DuplicateNfcTagException(nfc);
-                }
+        if (command.getNfcTagId() != null) {
+            String nfc = blankToNull(command.getNfcTagId());
+            if (nfc != null && !Objects.equals(nfc, station.getNfcTagId())
+                    && stationRepository.existsByNfcTagIdAndIdNot(nfc, stationId)) {
+                throw new DuplicateNfcTagException(nfc);
             }
             station.setNfcTagId(nfc);
         }
-        if (req.getQrCodeToken() != null) {
-            String qr = blankToNull(req.getQrCodeToken());
-            if (qr != null && !Objects.equals(qr, station.getQrCodeToken())) {
-                if (stationRepository.existsByQrCodeTokenAndIdNot(qr, stationId)) {
-                    throw new DuplicateQrTokenException(qr);
-                }
+        if (command.getQrCodeToken() != null) {
+            String qr = blankToNull(command.getQrCodeToken());
+            if (qr != null && !Objects.equals(qr, station.getQrCodeToken())
+                    && stationRepository.existsByQrCodeTokenAndIdNot(qr, stationId)) {
+                throw new DuplicateQrTokenException(qr);
             }
             station.setQrCodeToken(qr);
         }
-        if (req.getIsActive() != null) {
-            boolean nowActive = Boolean.TRUE.equals(req.getIsActive());
+        if (command.getIsActive() != null) {
+            boolean nowActive = Boolean.TRUE.equals(command.getIsActive());
             if (wasActive != nowActive) {
                 station.setIsActive(nowActive);
                 if (nowActive) {
@@ -149,14 +151,14 @@ public class StationCommandService {
         station.setUpdatedAt(LocalDateTime.now());
         Station saved = stationRepository.save(station);
         evictStationCaches(saved, oldNfc, oldQr);
-        return mapper.toStationDetail(saved, true);
+        return mapper.toStationDetailView(saved, true);
     }
 
     @Transactional
-    public StationDetailResponse activateStation(UUID stationId) {
+    public StationDetailView activateStation(UUID stationId) {
         Station station = stationRepository.findById(stationId).orElseThrow(() -> new StationNotFoundException(stationId));
         if (Boolean.TRUE.equals(station.getIsActive())) {
-            return mapper.toStationDetail(station, true);
+            return mapper.toStationDetailView(station, true);
         }
         station.setIsActive(true);
         station.setUpdatedAt(LocalDateTime.now());
@@ -165,14 +167,14 @@ public class StationCommandService {
         evictAllStationCaches(saved);
         RbacTransactionCallbacks.afterCommit(
                 () -> eventPublisher.publishEvent(new StationActivatedEvent(saved.getId())));
-        return mapper.toStationDetail(saved, true);
+        return mapper.toStationDetailView(saved, true);
     }
 
     @Transactional
-    public StationDetailResponse deactivateStation(UUID stationId) {
+    public StationDetailView deactivateStation(UUID stationId) {
         Station station = stationRepository.findById(stationId).orElseThrow(() -> new StationNotFoundException(stationId));
         if (!Boolean.TRUE.equals(station.getIsActive())) {
-            return mapper.toStationDetail(station, true);
+            return mapper.toStationDetailView(station, true);
         }
         station.setIsActive(false);
         station.setUpdatedAt(LocalDateTime.now());
@@ -181,13 +183,14 @@ public class StationCommandService {
         evictAllStationCaches(saved);
         RbacTransactionCallbacks.afterCommit(
                 () -> eventPublisher.publishEvent(new StationDeactivatedEvent(saved.getId())));
-        return mapper.toStationDetail(saved, true);
+        return mapper.toStationDetailView(saved, true);
     }
 
     @Transactional
-    public StationDetailResponse rotateQrToken(UUID stationId, RotateQrTokenRequest req) {
+    public StationDetailView rotateQrToken(RotateStationQrTokenCommand command) {
+        UUID stationId = command.getStationId();
         Station station = stationRepository.findById(stationId).orElseThrow(() -> new StationNotFoundException(stationId));
-        String newQr = req.getQrCodeToken().trim();
+        String newQr = command.getQrCodeToken().trim();
         if (stationRepository.existsByQrCodeTokenAndIdNot(newQr, stationId)) {
             throw new DuplicateQrTokenException(newQr);
         }
@@ -203,13 +206,25 @@ public class StationCommandService {
                     stationCachePort.evictDetailByStationId(saved.getId());
                     eventPublisher.publishEvent(new StationQrRotatedEvent(saved.getId(), oldQr, newQr));
                 });
-        return mapper.toStationDetail(saved, true);
+        return mapper.toStationDetailView(saved, true);
     }
 
     @Transactional
     public void incrementCollectorCount(UUID stationId) {
         Station station = stationRepository.findById(stationId).orElseThrow(() -> new StationNotFoundException(stationId));
-        int next = (station.getCollectorCount() == null ? 0 : station.getCollectorCount()) + 1;
+        if (!Boolean.TRUE.equals(station.getIsActive())) {
+            log.warn("[Metro] reject collectorCount increment for inactive stationId={} principal={}",
+                    stationId, currentPrincipalName());
+            throw new StationInactiveException(stationId);
+        }
+        log.info("[Metro] increment collectorCount stationId={} principal={}", stationId, currentPrincipalName());
+        int current = station.getCollectorCount() == null ? 0 : station.getCollectorCount();
+        final int next;
+        try {
+            next = Math.addExact(current, 1);
+        } catch (ArithmeticException ex) {
+            throw new IllegalArgumentException("collectorCount overflow for station: " + stationId);
+        }
         station.setCollectorCount(next);
         station.setUpdatedAt(LocalDateTime.now());
         stationRepository.save(station);
@@ -242,7 +257,7 @@ public class StationCommandService {
     }
 
     @Transactional
-    public StationImageUploadResponse uploadStationImage(UUID stationId, MultipartFile file) {
+    public StationImageUploadView uploadStationImage(UUID stationId, MultipartFile file) {
         if (file == null) {
             throw new InvalidFileException("File is required");
         }
@@ -262,24 +277,21 @@ public class StationCommandService {
         station.setUpdatedAt(LocalDateTime.now());
         stationRepository.save(station);
         evictAllStationCaches(station);
-        return new StationImageUploadResponse(url);
+        return new StationImageUploadView(url);
     }
 
-    private void validateSequence(UUID lineId, Integer sequence, UUID excludeStationId) {
-        if (sequence == null) {
-            return;
-        }
-        boolean dup = excludeStationId == null
+    private void validateSequence(UUID lineId, Integer sequence, UUID stationId) {
+        boolean exists = stationId == null
                 ? stationRepository.existsByLineIdAndSequence(lineId, sequence)
-                : stationRepository.existsByLineIdAndSequenceAndIdNot(lineId, sequence, excludeStationId);
-        if (dup) {
+                : stationRepository.existsByLineIdAndSequenceAndIdNot(lineId, sequence, stationId);
+        if (exists) {
             throw new DuplicateStationSequenceException(lineId, sequence);
         }
     }
 
     private void validateNewStationCodes(UUID lineId, String code, String nfcTagId, String qrCodeToken) {
-        if (stationRepository.existsByCode(code.trim())) {
-            throw new DuplicateStationCodeException(code.trim(), lineId);
+        if (stationRepository.existsByCode(code)) {
+            throw new DuplicateStationCodeException(code, lineId);
         }
         String nfc = blankToNull(nfcTagId);
         if (nfc != null && stationRepository.existsByNfcTagId(nfc)) {
@@ -293,50 +305,51 @@ public class StationCommandService {
 
     private void bumpLineTotalStations(UUID lineId, int delta) {
         Line line = lineRepository.findById(lineId).orElseThrow(() -> new LineNotFoundException(lineId));
-        int next = Math.max(0, line.getTotalStations() + delta);
-        line.setTotalStations(next);
+        int current = line.getTotalStations() == null ? 0 : line.getTotalStations();
+        line.setTotalStations(Math.max(0, current + delta));
         line.setUpdatedAt(LocalDateTime.now());
         lineRepository.save(line);
     }
 
-    private static String blankToNull(String s) {
-        if (s == null || s.isBlank()) {
+    private void evictAllStationCaches(Station station) {
+        stationCachePort.evictDetailByStationId(station.getId());
+        if (station.getNfcTagId() != null) {
+            stationCachePort.evictByNfcTagId(station.getNfcTagId());
+        }
+        if (station.getQrCodeToken() != null) {
+            stationCachePort.evictByQrToken(station.getQrCodeToken());
+        }
+    }
+
+    private void evictStationCaches(Station station, String oldNfc, String oldQr) {
+        stationCachePort.evictDetailByStationId(station.getId());
+        if (oldNfc != null && !oldNfc.equals(station.getNfcTagId())) {
+            stationCachePort.evictByNfcTagId(oldNfc);
+        }
+        if (oldQr != null && !oldQr.equals(station.getQrCodeToken())) {
+            stationCachePort.evictByQrToken(oldQr);
+        }
+        if (station.getNfcTagId() != null) {
+            stationCachePort.evictByNfcTagId(station.getNfcTagId());
+        }
+        if (station.getQrCodeToken() != null) {
+            stationCachePort.evictByQrToken(station.getQrCodeToken());
+        }
+    }
+
+    private static String blankToNull(String value) {
+        if (value == null || value.isBlank()) {
             return null;
         }
-        return s.trim();
+        return value.trim();
     }
 
-    private void evictStationCaches(Station saved, String oldNfc, String oldQr) {
+    private static String currentPrincipalName() {
         try {
-            stationCachePort.evictDetailByStationId(saved.getId());
-            if (oldNfc != null) {
-                stationCachePort.evictByNfcTagId(oldNfc);
-            }
-            if (saved.getNfcTagId() != null) {
-                stationCachePort.evictByNfcTagId(saved.getNfcTagId());
-            }
-            if (oldQr != null) {
-                stationCachePort.evictByQrToken(oldQr);
-            }
-            if (saved.getQrCodeToken() != null) {
-                stationCachePort.evictByQrToken(saved.getQrCodeToken());
-            }
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            return auth == null ? "anonymous" : auth.getName();
         } catch (Exception e) {
-            log.warn("[StationCommand] cache eviction failed after station update: {}", e.getMessage());
-        }
-    }
-
-    private void evictAllStationCaches(Station station) {
-        try {
-            stationCachePort.evictDetailByStationId(station.getId());
-            if (station.getNfcTagId() != null) {
-                stationCachePort.evictByNfcTagId(station.getNfcTagId());
-            }
-            if (station.getQrCodeToken() != null) {
-                stationCachePort.evictByQrToken(station.getQrCodeToken());
-            }
-        } catch (Exception e) {
-            log.warn("[StationCommand] cache eviction failed: {}", e.getMessage());
+            return "unknown";
         }
     }
 }

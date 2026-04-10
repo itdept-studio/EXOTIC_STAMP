@@ -13,9 +13,12 @@ import metro.ExoticStamp.modules.auth.domain.exception.UserNotActiveException;
 import metro.ExoticStamp.common.exceptions.storage.FileTooLargeException;
 import metro.ExoticStamp.common.exceptions.storage.InvalidFileException;
 import metro.ExoticStamp.common.exceptions.storage.InvalidImageTypeException;
+import metro.ExoticStamp.modules.collection.domain.exception.CampaignNotActiveException;
 import metro.ExoticStamp.modules.collection.domain.exception.CampaignNotFoundException;
+import metro.ExoticStamp.modules.collection.domain.exception.GpsVerificationFailedException;
 import metro.ExoticStamp.modules.collection.domain.exception.IdempotencyKeyConflictException;
 import metro.ExoticStamp.modules.collection.domain.exception.InvalidRequestException;
+import metro.ExoticStamp.modules.collection.domain.exception.InvalidScanInputException;
 import metro.ExoticStamp.modules.collection.domain.exception.InvalidStationException;
 import metro.ExoticStamp.modules.collection.domain.exception.StampAlreadyCollectedException;
 import metro.ExoticStamp.modules.metro.domain.exception.DuplicateNfcTagException;
@@ -253,6 +256,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleCampaignNotFound(CampaignNotFoundException ex, HttpServletRequest req) {
         log.warn("[404] {}", ex.getMessage());
         return build(404, "CAMPAIGN_NOT_FOUND", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(CampaignNotActiveException.class)
+    public ResponseEntity<ErrorResponse> handleCampaignNotActive(CampaignNotActiveException ex, HttpServletRequest req) {
+        log.warn("[400] {}", ex.getMessage());
+        return build(400, "CAMPAIGN_NOT_ACTIVE", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(GpsVerificationFailedException.class)
+    public ResponseEntity<ErrorResponse> handleGpsVerificationFailed(GpsVerificationFailedException ex, HttpServletRequest req) {
+        log.warn("[400] {}", ex.getMessage());
+        return build(400, "GPS_VERIFICATION_FAILED", ex.getMessage(), req);
+    }
+
+    @ExceptionHandler(InvalidScanInputException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidScanInput(InvalidScanInputException ex, HttpServletRequest req) {
+        log.warn("[400] {}", ex.getMessage());
+        return build(400, "INVALID_SCAN_METHOD", ex.getMessage(), req);
     }
 
     @ExceptionHandler(InvalidStationException.class)

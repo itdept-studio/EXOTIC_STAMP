@@ -13,5 +13,7 @@ public interface JpaStampDesignRepository extends JpaRepository<StampDesign, UUI
     Optional<StampDesign> findByCampaignIdAndStationIdAndIsActiveTrue(UUID campaignId, UUID stationId);
 
     List<StampDesign> findByCampaignIdAndStationIdInAndIsActiveTrue(UUID campaignId, Collection<UUID> stationIds);
+
+    List<StampDesign> findByCampaignIdOrderByNameAsc(UUID campaignId);
 }
 

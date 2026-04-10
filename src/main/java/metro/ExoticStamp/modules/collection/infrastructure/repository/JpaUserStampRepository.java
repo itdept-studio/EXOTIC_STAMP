@@ -30,5 +30,10 @@ public interface JpaUserStampRepository extends JpaRepository<UserStamp, UUID> {
             @Param("userId") UUID userId,
             @Param("campaignId") UUID campaignId
     );
+
+    long count();
+
+    @Query("select us.campaignId, count(us) from UserStamp us group by us.campaignId")
+    List<Object[]> countGroupedByCampaignId();
 }
 
