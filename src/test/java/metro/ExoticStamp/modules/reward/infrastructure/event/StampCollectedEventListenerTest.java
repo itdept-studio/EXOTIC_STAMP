@@ -1,0 +1,88 @@
+package metro.ExoticStamp.modules.reward.infrastructure.event;
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import metro.ExoticStamp.modules.collection.domain.event.StampCollectedEvent;
+import metro.ExoticStamp.modules.collection.domain.model.CollectMethod;
+import metro.ExoticStamp.modules.reward.application.port.RewardStampCollectedDedupPort;
+import metro.ExoticStamp.modules.reward.application.service.RewardCommandService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class StampCollectedEventListenerTest {
+
+    @Mock
+    private RewardStampCollectedDedupPort dedupPort;
+    @Mock
+    private RewardCommandService rewardCommandService;
+    @Mock
+    private MeterRegistry meterRegistry;
+    @Mock
+    private Counter counter;
+
+    private StampCollectedEventListener listener;
+
+    @BeforeEach
+    void setUp() {
+        listener = new StampCollectedEventListener(dedupPort, rewardCommandService, meterRegistry);
+    }
+
+    @Test
+    void duplicate_skipsProcessing() {
+        UUID eventId = UUID.randomUUID();
+        when(dedupPort.claimFirstProcessing(eventId)).thenReturn(false);
+        StampCollectedEvent event = new StampCollectedEvent(
+                this, eventId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(),
+                LocalDateTime.now(), CollectMethod.NFC
+        );
+        listener.onStampCollected(event);
+        verify(rewardCommandService, never()).handleStampCollected(any(), any(), any());
+    }
+
+    @Test
+    void first_run_invokesHandleStampCollected() {
+        UUID eventId = UUID.randomUUID();
+        UUID userId = UUID.randomUUID();
+        UUID lineId = UUID.randomUUID();
+        UUID campaignId = UUID.randomUUID();
+        when(dedupPort.claimFirstProcessing(eventId)).thenReturn(true);
+        when(meterRegistry.counter(eq("reward.milestone.checked"), eq("lineId"), eq(lineId.toString())))
+                .thenReturn(counter);
+        StampCollectedEvent event = new StampCollectedEvent(
+                this, eventId, userId, UUID.randomUUID(), lineId, campaignId,
+                LocalDateTime.now(), CollectMethod.QR
+        );
+        listener.onStampCollected(event);
+        verify(rewardCommandService).handleStampCollected(userId, lineId, campaignId);
+        verify(counter).increment();
+    }
+
+    @Test
+    void handlerException_swallowed() {
+        UUID eventId = UUID.randomUUID();
+        UUID lineId = UUID.randomUUID();
+        when(dedupPort.claimFirstProcessing(eventId)).thenReturn(true);
+        when(meterRegistry.counter(eq("reward.milestone.checked"), eq("lineId"), eq(lineId.toString())))
+                .thenReturn(counter);
+        doThrow(new RuntimeException("boom")).when(rewardCommandService).handleStampCollected(any(), any(), any());
+        StampCollectedEvent event = new StampCollectedEvent(
+                this, eventId, UUID.randomUUID(), UUID.randomUUID(), lineId, UUID.randomUUID(),
+                LocalDateTime.now(), CollectMethod.NFC
+        );
+        listener.onStampCollected(event);
+    }
+}
