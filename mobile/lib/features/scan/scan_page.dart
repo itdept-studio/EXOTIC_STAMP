@@ -134,8 +134,6 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
   }
 
   Future<void> _toggleZoom() async {
-    final nextZoom = isZoomed ? 1.0 : 2.0;
-    await scannerController.setZoomScale(nextZoom);
     if (!mounted) {
       return;
     }
@@ -336,7 +334,9 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
         return AppNoticeDialog(
           title: 'Hướng dẫn quét',
           message: selectedMode == _ScanMode.qr
-              ? 'Đưa mã QR vào trong vòng tròn, giữ máy ổn định và đảm bảo đủ sáng.'
+              ? isZoomed
+                  ? 'Đưa mã QR vào trong vùng camera lớn, giữ máy ổn định và đảm bảo đủ sáng.'
+                  : 'Đưa mã QR vào trong vòng tròn, giữ máy ổn định và đảm bảo đủ sáng.'
               : 'Chạm mặt lưng điện thoại vào tag NFC, giữ yên vài giây đến khi hệ thống nhận thẻ.',
         );
       },
@@ -421,103 +421,16 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
                         subtitle: subtitleText,
                       ),
                       const SizedBox(height: 34),
-                      SizedBox(
-                        width: 360,
-                        height: 360,
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          alignment: Alignment.center,
-                          children: [
-                            Container(
-                              width: 332,
-                              height: 332,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.brandBlue
-                                      .withValues(alpha: 0.22),
-                                  width: 3,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.brandBlue
-                                        .withValues(alpha: 0.12),
-                                    blurRadius: 24,
-                                    spreadRadius: 4,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              width: 276,
-                              height: 276,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: AppColors.brandBlue,
-                                  width: 5,
-                                ),
-                              ),
-                              child: ClipOval(
-                                child: DecoratedBox(
-                                  decoration: const BoxDecoration(
-                                    gradient: RadialGradient(
-                                      center: Alignment.center,
-                                      radius: 0.9,
-                                      colors: [
-                                        Color(0xFF0A0D14),
-                                        Color(0xFF06070C),
-                                      ],
-                                    ),
-                                  ),
-                                  child: selectedMode == _ScanMode.qr
-                                      ? Stack(
-                                          fit: StackFit.expand,
-                                          children: [
-                                            MobileScanner(
-                                              controller: scannerController,
-                                              fit: BoxFit.cover,
-                                              onDetect: _handleDetect,
-                                            ),
-                                            const _ScanFrameOverlay(),
-                                            const Align(
-                                              alignment: Alignment.center,
-                                              child: _QrGuideMark(),
-                                            ),
-                                          ],
-                                        )
-                                      : const _NfcPreview(),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              right: 8,
-                              top: 46,
-                              child: _CircleActionButton(
-                                icon: torchEnabled
-                                    ? Icons.flash_on_rounded
-                                    : Icons.flash_off_rounded,
-                                backgroundColor: AppColors.brandBlue,
-                                onTap: selectedMode == _ScanMode.qr
-                                    ? _toggleTorch
-                                    : null,
-                              ),
-                            ),
-                            Positioned(
-                              left: 12,
-                              bottom: 30,
-                              child: _CircleActionButton(
-                                icon: isZoomed
-                                    ? Icons.zoom_out_map_rounded
-                                    : Icons.open_in_full_rounded,
-                                backgroundColor: const Color(0xFF263049),
-                                onTap: selectedMode == _ScanMode.qr
-                                    ? _toggleZoom
-                                    : null,
-                              ),
-                            ),
-                          ],
-                        ),
+                      _ScanPreviewPanel(
+                        isExpanded: isZoomed,
+                        selectedMode: selectedMode,
+                        scannerController: scannerController,
+                        torchEnabled: torchEnabled,
+                        onDetect: _handleDetect,
+                        onToggleTorch:
+                            selectedMode == _ScanMode.qr ? _toggleTorch : null,
+                        onToggleZoom:
+                            selectedMode == _ScanMode.qr ? _toggleZoom : null,
                       ),
                       const SizedBox(height: 34),
                       _ScanModeSegmentedControl(
@@ -528,10 +441,14 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
                       const SizedBox(height: 28),
                       _ScanInfoCard(
                         title: selectedMode == _ScanMode.qr
-                            ? 'Align QR code within the circle'
+                            ? isZoomed
+                                ? 'Scan QR code anywhere in the large camera view'
+                                : 'Align QR code within the circle'
                             : 'Hold device near the NFC tag',
                         description: selectedMode == _ScanMode.qr
-                            ? 'Stamps are found near station ticket gates or information kiosks. Make sure you have an active internet connection.'
+                            ? isZoomed
+                                ? 'Expanded mode scans the whole camera area, so you do not need to keep the QR code inside the circle.'
+                                : 'Stamps are found near station ticket gates or information kiosks. Make sure you have an active internet connection.'
                             : isNfcAvailable
                                 ? 'Use the back of your phone to read the NFC tag. Keep the device still until the app confirms the scan.'
                                 : _nfcTemporarilyDisabledOnIos
@@ -592,6 +509,132 @@ class _ScanPageState extends State<ScanPage> with WidgetsBindingObserver {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _ScanPreviewPanel extends StatelessWidget {
+  const _ScanPreviewPanel({
+    required this.isExpanded,
+    required this.selectedMode,
+    required this.scannerController,
+    required this.torchEnabled,
+    required this.onDetect,
+    this.onToggleTorch,
+    this.onToggleZoom,
+  });
+
+  final bool isExpanded;
+  final _ScanMode selectedMode;
+  final MobileScannerController scannerController;
+  final bool torchEnabled;
+  final void Function(BarcodeCapture capture) onDetect;
+  final VoidCallback? onToggleTorch;
+  final VoidCallback? onToggleZoom;
+
+  @override
+  Widget build(BuildContext context) {
+    final previewSize = isExpanded ? 520.0 : 360.0;
+    final scanAreaSize = isExpanded ? 500.0 : 276.0;
+    final borderRadius = BorderRadius.circular(isExpanded ? 32 : 999);
+    final outerBorderRadius = BorderRadius.circular(isExpanded ? 40 : 999);
+    final helpIcon =
+        isExpanded ? Icons.zoom_in_map_rounded : Icons.open_in_full_rounded;
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeOutCubic,
+      width: double.infinity,
+      height: previewSize,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            width: isExpanded ? double.infinity : 332,
+            height: isExpanded ? previewSize - 24 : 332,
+            decoration: BoxDecoration(
+              borderRadius: outerBorderRadius,
+              border: Border.all(
+                color: AppColors.brandBlue.withValues(alpha: 0.22),
+                width: 3,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.brandBlue.withValues(alpha: 0.12),
+                  blurRadius: 24,
+                  spreadRadius: 4,
+                ),
+              ],
+            ),
+          ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+            width: isExpanded ? double.infinity : scanAreaSize,
+            height: isExpanded ? scanAreaSize : scanAreaSize,
+            decoration: BoxDecoration(
+              borderRadius: borderRadius,
+              border: Border.all(
+                color: AppColors.brandBlue,
+                width: 5,
+              ),
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: DecoratedBox(
+              decoration: const BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.center,
+                  radius: 0.9,
+                  colors: [
+                    Color(0xFF0A0D14),
+                    Color(0xFF06070C),
+                  ],
+                ),
+              ),
+              child: selectedMode == _ScanMode.qr
+                  ? Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        MobileScanner(
+                          controller: scannerController,
+                          fit: BoxFit.cover,
+                          onDetect: onDetect,
+                        ),
+                        _ScanFrameOverlay(isExpanded: isExpanded),
+                        const Align(
+                          alignment: Alignment.center,
+                          child: _QrGuideMark(),
+                        ),
+                      ],
+                    )
+                  : const _NfcPreview(),
+            ),
+          ),
+          Positioned(
+            right: isExpanded ? 14 : 8,
+            top: isExpanded ? 24 : 46,
+            child: _CircleActionButton(
+              icon: torchEnabled
+                  ? Icons.flash_on_rounded
+                  : Icons.flash_off_rounded,
+              backgroundColor: AppColors.brandBlue,
+              onTap: onToggleTorch,
+            ),
+          ),
+          Positioned(
+            left: isExpanded ? 14 : 12,
+            bottom: isExpanded ? 20 : 30,
+            child: _CircleActionButton(
+              icon: helpIcon,
+              backgroundColor: const Color(0xFF263049),
+              onTap: onToggleZoom,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -735,25 +778,33 @@ class _SponsoredCard extends StatelessWidget {
 }
 
 class _ScanFrameOverlay extends StatelessWidget {
-  const _ScanFrameOverlay();
+  const _ScanFrameOverlay({required this.isExpanded});
+
+  final bool isExpanded;
 
   @override
   Widget build(BuildContext context) {
-    return const Stack(
+    final padding = isExpanded ? 38.0 : 54.0;
+
+    return Stack(
       children: [
-        _CornerMark(alignment: Alignment.topLeft),
-        _CornerMark(alignment: Alignment.topRight),
-        _CornerMark(alignment: Alignment.bottomLeft),
-        _CornerMark(alignment: Alignment.bottomRight),
+        _CornerMark(alignment: Alignment.topLeft, padding: padding),
+        _CornerMark(alignment: Alignment.topRight, padding: padding),
+        _CornerMark(alignment: Alignment.bottomLeft, padding: padding),
+        _CornerMark(alignment: Alignment.bottomRight, padding: padding),
       ],
     );
   }
 }
 
 class _CornerMark extends StatelessWidget {
-  const _CornerMark({required this.alignment});
+  const _CornerMark({
+    required this.alignment,
+    required this.padding,
+  });
 
   final Alignment alignment;
+  final double padding;
 
   @override
   Widget build(BuildContext context) {
@@ -764,7 +815,7 @@ class _CornerMark extends StatelessWidget {
     return Align(
       alignment: alignment,
       child: Padding(
-        padding: const EdgeInsets.all(54),
+        padding: EdgeInsets.all(padding),
         child: SizedBox(
           width: 42,
           height: 42,
