@@ -3,9 +3,10 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/router.dart';
+import '../../../core/errors/app_exception.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_notice_dialog.dart';
-import '../data/mock_auth_store.dart';
+import '../data/auth_api_service.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -49,6 +50,7 @@ class _RegisterPageState extends State<RegisterPage> {
   ];
 
   final TextEditingController fullNameController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
@@ -60,10 +62,12 @@ class _RegisterPageState extends State<RegisterPage> {
   bool obscureConfirmPassword = true;
   bool isSubmitting = false;
   _PhoneCountry selectedPhoneCountry = _phoneCountries.first;
+  final AuthApiService _authApiService = AuthApiService();
 
   @override
   void dispose() {
     fullNameController.dispose();
+    usernameController.dispose();
     emailController.dispose();
     phoneController.dispose();
     passwordController.dispose();
@@ -89,6 +93,7 @@ class _RegisterPageState extends State<RegisterPage> {
     }
 
     final fullName = fullNameController.text.trim();
+    final username = usernameController.text.trim();
     final email = emailController.text.trim();
     final phone = phoneController.text.trim();
     final password = passwordController.text;
@@ -107,6 +112,14 @@ class _RegisterPageState extends State<RegisterPage> {
         title: 'Email chưa hợp lệ',
         message:
             'Vui lòng nhập đúng định dạng email, ví dụ `example@gmail.com`.',
+      );
+      return;
+    }
+
+    if (!Validators.isNotEmpty(username)) {
+      await _showNotice(
+        title: 'Thiếu tên đăng nhập',
+        message: 'Vui lòng nhập tên đăng nhập để tiếp tục.',
       );
       return;
     }
@@ -148,14 +161,27 @@ class _RegisterPageState extends State<RegisterPage> {
       isSubmitting = true;
     });
 
-    await Future<void>.delayed(const Duration(milliseconds: 500));
-    final registerError = MockAuthStore.register(
-      fullName: fullName,
-      email: email,
-      password: password,
-      phoneWithDialCode:
-          phone.isEmpty ? null : '${selectedPhoneCountry.dialCode} $phone',
-    );
+    final fullNameParts = _splitFullName(fullName);
+    final firstName = fullNameParts.$1;
+    final lastName = fullNameParts.$2;
+    final phoneNumber =
+        phone.isEmpty ? '' : '${selectedPhoneCountry.dialCode}$phone';
+
+    String? registerError;
+    try {
+      await _authApiService.register(
+        firstName: firstName,
+        lastName: lastName,
+        username: username,
+        email: email,
+        phoneNumber: phoneNumber,
+        password: password,
+      );
+    } on AppException catch (exception) {
+      registerError = exception.message;
+    } catch (_) {
+      registerError = 'Đăng ký chưa thành công. Vui lòng thử lại.';
+    }
 
     if (!mounted) {
       return;
@@ -173,16 +199,23 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    await _showNotice(
-      title: 'Tạo tài khoản thành công',
-      message: 'Bạn có thể đăng nhập ngay bằng email vừa đăng ký.',
+    Navigator.of(context).pushReplacementNamed(
+      AppRouter.verifyEmailOtp,
+      arguments: email,
     );
+  }
 
-    if (!mounted) {
-      return;
+  (String, String) _splitFullName(String fullName) {
+    final parts = fullName
+        .split(RegExp(r'\s+'))
+        .where((item) => item.isNotEmpty)
+        .toList();
+    if (parts.length <= 1) {
+      final fallbackName = parts.isEmpty ? fullName : parts.first;
+      return (fallbackName, fallbackName);
     }
 
-    Navigator.of(context).pushReplacementNamed(AppRouter.auth);
+    return (parts.first, parts.sublist(1).join(' '));
   }
 
   @override
@@ -262,6 +295,14 @@ class _RegisterPageState extends State<RegisterPage> {
                 hintText: 'Nguyễn Văn A',
                 prefixIcon: Icons.person_outline,
                 controller: fullNameController,
+              ),
+              const SizedBox(height: 18),
+              const _RegisterLabel(text: 'Tên đăng nhập'),
+              const SizedBox(height: 8),
+              _RegisterInputField(
+                hintText: 'username123',
+                prefixIcon: Icons.alternate_email,
+                controller: usernameController,
               ),
               const SizedBox(height: 18),
               const _RegisterLabel(text: 'Email'),

@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../core/errors/app_exception.dart';
+import '../../../core/utils/validators.dart';
+import '../../../core/widgets/app_notice_dialog.dart';
+import '../data/auth_api_service.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -21,7 +25,87 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   ];
 
   bool useEmail = true;
+  bool isSubmitting = false;
   _PhoneCountry selectedPhoneCountry = _phoneCountries.first;
+  final TextEditingController emailController = TextEditingController();
+  final AuthApiService _authApiService = AuthApiService();
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _showNotice({
+    required String title,
+    required String message,
+  }) {
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AppNoticeDialog(
+        title: title,
+        message: message,
+      ),
+    );
+  }
+
+  Future<void> _handleForgotPassword() async {
+    if (isSubmitting) {
+      return;
+    }
+
+    if (!useEmail) {
+      await _showNotice(
+        title: 'Tạm thời chỉ hỗ trợ Email',
+        message:
+            'Hiện backend forgot password đang dùng email. Vui lòng chọn tab Email.',
+      );
+      return;
+    }
+
+    final email = emailController.text.trim();
+    if (!Validators.isValidEmail(email)) {
+      await _showNotice(
+        title: 'Email chưa hợp lệ',
+        message: 'Vui lòng nhập email đúng định dạng để nhận mã xác thực.',
+      );
+      return;
+    }
+
+    setState(() {
+      isSubmitting = true;
+    });
+
+    String? errorMessage;
+    try {
+      await _authApiService.resendForgotPasswordOtp(email: email);
+    } on AppException catch (exception) {
+      errorMessage = exception.message;
+    } catch (_) {
+      errorMessage = 'Gửi yêu cầu chưa thành công. Vui lòng thử lại.';
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      isSubmitting = false;
+    });
+
+    if (errorMessage != null) {
+      await _showNotice(
+        title: 'Không thể gửi mã',
+        message: errorMessage,
+      );
+      return;
+    }
+
+    Navigator.of(context).pushNamed(
+      AppRouter.forgotPasswordOtp,
+      arguments: email,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,9 +214,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               ),
               const SizedBox(height: 8),
               useEmail
-                  ? const _RecoveryInput(
+                  ? _RecoveryInput(
                       hintText: 'example@email.com',
                       prefixIcon: Icons.mail_outline,
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
                     )
                   : _RecoveryPhoneInput(
                       selectedCountry: selectedPhoneCountry,
@@ -148,15 +234,24 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                 width: double.infinity,
                 height: 54,
                 child: ElevatedButton(
-                  onPressed: () {},
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Gửi mã xác thực'),
-                      SizedBox(width: 12),
-                      Icon(Icons.arrow_forward_rounded),
-                    ],
-                  ),
+                  onPressed: isSubmitting ? null : _handleForgotPassword,
+                  child: isSubmitting
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: AppColors.background,
+                          ),
+                        )
+                      : const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('Gửi mã xác thực'),
+                            SizedBox(width: 12),
+                            Icon(Icons.arrow_forward_rounded),
+                          ],
+                        ),
                 ),
               ),
               const SizedBox(height: 26),
@@ -394,14 +489,20 @@ class _RecoveryInput extends StatelessWidget {
   const _RecoveryInput({
     required this.hintText,
     required this.prefixIcon,
+    this.controller,
+    this.keyboardType,
   });
 
   final String hintText;
   final IconData prefixIcon;
+  final TextEditingController? controller;
+  final TextInputType? keyboardType;
 
   @override
   Widget build(BuildContext context) {
     return TextField(
+      controller: controller,
+      keyboardType: keyboardType,
       decoration: InputDecoration(
         hintText: hintText,
         prefixIcon: Icon(

@@ -3,9 +3,11 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../core/errors/app_exception.dart';
+import '../../../core/services/token_storage_service.dart';
 import '../../../core/utils/validators.dart';
 import '../../../core/widgets/app_notice_dialog.dart';
-import '../data/mock_auth_store.dart';
+import '../data/auth_api_service.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -21,6 +23,8 @@ class _AuthPageState extends State<AuthPage> {
   bool rememberMe = false;
   bool obscurePassword = true;
   bool isSubmitting = false;
+  final AuthApiService _authApiService = AuthApiService();
+  final TokenStorageService _tokenStorageService = const TokenStorageService();
 
   @override
   void dispose() {
@@ -69,11 +73,19 @@ class _AuthPageState extends State<AuthPage> {
       isSubmitting = true;
     });
 
-    await Future<void>.delayed(const Duration(milliseconds: 450));
-    final loginError = MockAuthStore.login(
-      identifier: identifier,
-      password: password,
-    );
+    String? loginError;
+    AuthLoginResult? loginResult;
+    try {
+      loginResult = await _authApiService.login(
+        identifier: identifier,
+        password: password,
+        deviceFingerprint: 'flutter-mobile-app',
+      );
+    } on AppException catch (exception) {
+      loginError = exception.message;
+    } catch (_) {
+      loginError = 'Đăng nhập thất bại. Vui lòng thử lại.';
+    }
 
     if (!mounted) {
       return;
@@ -91,11 +103,27 @@ class _AuthPageState extends State<AuthPage> {
       return;
     }
 
+    final accessToken = loginResult?.accessToken;
+    if (accessToken != null && accessToken.trim().isNotEmpty) {
+      final tokenType = loginResult?.tokenType;
+      await _tokenStorageService.saveToken(
+        accessToken: accessToken,
+        tokenType: (tokenType != null && tokenType.trim().isNotEmpty)
+            ? tokenType
+            : 'Bearer',
+      );
+    }
+
+    final roles = loginResult?.roles ?? const <String>[];
+    final isAdmin = roles.any((role) => role.toUpperCase().contains('ADMIN'));
+
     await _showNotice(
       title: 'Đăng nhập thành công',
-      message: rememberMe
-          ? 'Chào mừng bạn quay lại. Phiên đăng nhập sẽ được ghi nhớ trên thiết bị này.'
-          : 'Chào mừng bạn quay lại Metro Stamp.',
+      message: isAdmin
+          ? 'Chào mừng admin quay lại.'
+          : (rememberMe
+              ? 'Chào mừng bạn quay lại. Phiên đăng nhập sẽ được ghi nhớ trên thiết bị này.'
+              : 'Chào mừng bạn quay lại Metro Stamp.'),
     );
 
     if (!mounted) {
@@ -103,7 +131,7 @@ class _AuthPageState extends State<AuthPage> {
     }
 
     Navigator.of(context).pushNamedAndRemoveUntil(
-      AppRouter.home,
+      isAdmin ? AppRouter.adminUsers : AppRouter.home,
       (route) => false,
     );
   }
