@@ -10,6 +10,7 @@ import metro.ExoticStamp.common.response.PageResponse;
 import metro.ExoticStamp.common.security.SecurityPrincipalSupport;
 import metro.ExoticStamp.modules.reward.application.service.RewardCommandService;
 import metro.ExoticStamp.modules.reward.application.service.RewardQueryService;
+import metro.ExoticStamp.modules.reward.domain.model.RewardStatus;
 import metro.ExoticStamp.modules.reward.presentation.mapper.RewardPresentationMapper;
 import metro.ExoticStamp.modules.reward.presentation.request.RedeemRewardRequest;
 import metro.ExoticStamp.modules.reward.presentation.response.UserRewardResponse;
@@ -40,13 +41,14 @@ public class UserRewardController {
     @Operation(summary = "List my rewards (paginated)", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<PageResponse<UserRewardResponse>>> myRewards(
             @AuthenticationPrincipal UserDetails principal,
+            @RequestParam(required = false) RewardStatus status,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(required = false) Integer size
     ) {
         UUID userId = SecurityPrincipalSupport.requireUserId(principal);
         int s = size != null ? size : 0;
         return ResponseEntity.ok(ApiResponse.ok(
-                presentationMapper.toUserRewardListPage(rewardQueryService.getMyRewards(userId, page, s))));
+                presentationMapper.toUserRewardListPage(rewardQueryService.getMyRewards(userId, status, page, s))));
     }
 
     @GetMapping("/{id}")

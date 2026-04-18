@@ -4,5 +4,11 @@ import java.util.UUID;
 
 public interface RewardStampCollectedDedupPort {
 
-    boolean claimFirstProcessing(UUID eventId);
+    boolean isProcessed(UUID eventId);
+
+    boolean acquireProcessingLock(UUID eventId);
+
+    void markProcessed(UUID eventId);
+
+    void releaseProcessingLock(UUID eventId);
 }

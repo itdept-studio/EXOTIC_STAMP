@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import metro.ExoticStamp.modules.collection.domain.event.StampCollectedEvent;
 import metro.ExoticStamp.modules.reward.application.port.RewardStampCollectedDedupPort;
 import metro.ExoticStamp.modules.reward.application.service.RewardCommandService;
+import metro.ExoticStamp.modules.reward.config.RewardProperties;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -13,30 +14,71 @@ import org.springframework.stereotype.Component;
 import java.util.UUID;
 
 @Slf4j
-@Component
+@Component("rewardStampCollectedEventListener")
 @RequiredArgsConstructor
 public class StampCollectedEventListener {
 
     private final RewardStampCollectedDedupPort rewardStampCollectedDedupPort;
     private final RewardCommandService rewardCommandService;
     private final MeterRegistry meterRegistry;
+    private final RewardProperties rewardProperties;
 
     @Async
     @EventListener
     public void onStampCollected(StampCollectedEvent event) {
+        UUID eventId = event.getEventId();
         try {
-            if (!rewardStampCollectedDedupPort.claimFirstProcessing(event.getEventId())) {
+            if (rewardStampCollectedDedupPort.isProcessed(eventId)) {
                 log.debug("[Reward] duplicate StampCollectedEvent skipped eventId={} userId={}",
-                        event.getEventId(), event.getUserId());
+                        eventId, event.getUserId());
                 return;
             }
-            UUID lineId = event.getLineId();
-            String lineTag = lineId != null ? lineId.toString() : "unknown";
-            meterRegistry.counter("reward.milestone.checked", "lineId", lineTag).increment();
-            rewardCommandService.handleStampCollected(event.getUserId(), lineId, event.getCampaignId());
+            if (!rewardStampCollectedDedupPort.acquireProcessingLock(eventId)) {
+                log.debug("[Reward] processing in progress, skip eventId={} userId={}", eventId, event.getUserId());
+                return;
+            }
+            try {
+                processWithRetry(event);
+            } finally {
+                rewardStampCollectedDedupPort.releaseProcessingLock(eventId);
+            }
         } catch (Exception e) {
             log.error("[Reward] StampCollectedEvent handling failed eventId={} userId={}: {}",
-                    event.getEventId(), event.getUserId(), e.getMessage(), e);
+                    eventId, event.getUserId(), e.getMessage(), e);
+        }
+    }
+
+    private void processWithRetry(StampCollectedEvent event) {
+        int maxAttempts = Math.max(1, rewardProperties.getStampCollectedEventMaxAttempts());
+        long backoffMillis = Math.max(0L, rewardProperties.getStampCollectedEventRetryBackoff().toMillis());
+        UUID lineId = event.getLineId();
+        String lineTag = lineId != null ? lineId.toString() : "unknown";
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                meterRegistry.counter("reward.milestone.checked", "lineId", lineTag).increment();
+                rewardCommandService.handleStampCollected(event.getUserId(), lineId, event.getCampaignId());
+                rewardStampCollectedDedupPort.markProcessed(event.getEventId());
+                return;
+            } catch (Exception ex) {
+                if (attempt >= maxAttempts) {
+                    throw ex;
+                }
+                log.warn("[Reward] attempt {}/{} failed eventId={} userId={}: {}",
+                        attempt, maxAttempts, event.getEventId(), event.getUserId(), ex.getMessage());
+                sleepQuietly(backoffMillis);
+            }
+        }
+    }
+
+    private static void sleepQuietly(long millis) {
+        if (millis <= 0) {
+            return;
+        }
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ie) {
+            Thread.currentThread().interrupt();
         }
     }
 }

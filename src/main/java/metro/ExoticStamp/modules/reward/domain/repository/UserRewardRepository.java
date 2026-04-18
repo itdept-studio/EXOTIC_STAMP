@@ -1,6 +1,7 @@
 package metro.ExoticStamp.modules.reward.domain.repository;
 
 import metro.ExoticStamp.modules.reward.domain.model.PagedSlice;
+import metro.ExoticStamp.modules.reward.domain.model.RewardStatus;
 import metro.ExoticStamp.modules.reward.domain.model.UserReward;
 
 import java.time.LocalDateTime;
@@ -19,6 +20,8 @@ public interface UserRewardRepository {
     boolean existsByUserIdAndMilestoneId(UUID userId, UUID milestoneId);
 
     PagedSlice<UserReward> findByUserIdOrderByIssuedAtDesc(UUID userId, int page, int size);
+
+    PagedSlice<UserReward> findByUserIdAndStatusOrderByIssuedAtDesc(UUID userId, RewardStatus status, int page, int size);
 
     /**
      * @return number of rows updated

@@ -28,7 +28,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -101,11 +100,12 @@ public class AdminRewardController {
     @PostMapping("/{id}/vouchers/bulk-upload")
     @PreAuthorize("hasRole('ADMIN')")
     @Operation(summary = "Bulk upload voucher codes", security = @SecurityRequirement(name = "bearerAuth"))
-    public ResponseEntity<ApiResponse<Map<String, Integer>>> bulkUpload(
+    public ResponseEntity<ApiResponse<VoucherPoolStatsResponse>> bulkUpload(
             @PathVariable UUID id,
             @Valid @RequestBody BulkUploadVoucherRequest request) {
-        int inserted = adminRewardCommandService.bulkUploadVouchers(id, request.getCodes());
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(Map.of("inserted", inserted)));
+        adminRewardCommandService.bulkUploadVouchers(id, request.getCodes());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(
+                presentationMapper.toVoucherStatsResponse(adminRewardQueryService.getVoucherStats(id))));
     }
 
     @GetMapping("/{id}/vouchers/stats")

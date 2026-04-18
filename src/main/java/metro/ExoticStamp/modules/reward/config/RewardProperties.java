@@ -22,6 +22,14 @@ public class RewardProperties {
     @NotNull
     private Duration stampCollectedEventDedupTtl = Duration.ofHours(48);
 
+    @NotNull
+    private Duration stampCollectedEventProcessingLockTtl = Duration.ofMinutes(2);
+
+    private int stampCollectedEventMaxAttempts = 3;
+
+    @NotNull
+    private Duration stampCollectedEventRetryBackoff = Duration.ofMillis(200);
+
     /**
      * Cron for nightly reward expiry batch (Spring {@code @Scheduled} expression).
      */

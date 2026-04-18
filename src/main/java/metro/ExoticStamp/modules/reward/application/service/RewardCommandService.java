@@ -46,7 +46,7 @@ public class RewardCommandService {
     private final ApplicationEventPublisher eventPublisher;
     private final java.time.Clock clock;
     private final MeterRegistry meterRegistry;
-    private final MilestoneDomainService milestoneDomainService = new MilestoneDomainService();
+    private final MilestoneDomainService milestoneDomainService;
 
     /**
      * Runs after stamp collection: evaluate milestones and issue rewards (idempotent per milestone).
@@ -156,10 +156,17 @@ public class RewardCommandService {
     public void redeemVoucher(UUID userId, UUID userRewardId) {
         UserReward ur = userRewardRepository.findByUserIdAndId(userId, userRewardId)
                 .orElseThrow(() -> new RewardNotFoundException("User reward not found: " + userRewardId));
+        LocalDateTime now = LocalDateTime.now(clock);
         if (ur.getStatus() != RewardStatus.ISSUED) {
             throw new RewardNotRedeemableException("Reward cannot be redeemed in status: " + ur.getStatus());
         }
-        LocalDateTime now = LocalDateTime.now(clock);
+        if (ur.getExpiresAt() != null && ur.getExpiresAt().isBefore(now)) {
+            ur.setStatus(RewardStatus.EXPIRED);
+            userRewardRepository.save(ur);
+            rewardCachePort.evictUserRewardListAll(userId);
+            rewardCachePort.evictUserRewardDetail(userId, userRewardId);
+            throw new RewardNotRedeemableException("Reward cannot be redeemed in status: EXPIRED");
+        }
         ur.setStatus(RewardStatus.REDEEMED);
         ur.setRedeemedAt(now);
         userRewardRepository.save(ur);

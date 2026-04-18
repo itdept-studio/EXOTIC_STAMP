@@ -2,6 +2,7 @@ package metro.ExoticStamp.modules.reward.infrastructure.repository;
 
 import lombok.RequiredArgsConstructor;
 import metro.ExoticStamp.modules.reward.domain.model.PagedSlice;
+import metro.ExoticStamp.modules.reward.domain.model.RewardStatus;
 import metro.ExoticStamp.modules.reward.domain.model.UserReward;
 import metro.ExoticStamp.modules.reward.domain.repository.UserRewardRepository;
 import org.springframework.data.domain.Page;
@@ -42,6 +43,13 @@ public class UserRewardRepositoryAdapter implements UserRewardRepository {
     @Override
     public PagedSlice<UserReward> findByUserIdOrderByIssuedAtDesc(UUID userId, int page, int size) {
         Page<UserReward> p = jpaUserRewardRepository.findByUserIdOrderByIssuedAtDesc(userId, PageRequest.of(page, size));
+        return new PagedSlice<>(p.getContent(), p.getTotalElements(), p.getTotalPages(), p.getNumber(), p.getSize());
+    }
+
+    @Override
+    public PagedSlice<UserReward> findByUserIdAndStatusOrderByIssuedAtDesc(UUID userId, RewardStatus status, int page, int size) {
+        Page<UserReward> p = jpaUserRewardRepository.findByUserIdAndStatusOrderByIssuedAtDesc(
+                userId, status, PageRequest.of(page, size));
         return new PagedSlice<>(p.getContent(), p.getTotalElements(), p.getTotalPages(), p.getNumber(), p.getSize());
     }
 

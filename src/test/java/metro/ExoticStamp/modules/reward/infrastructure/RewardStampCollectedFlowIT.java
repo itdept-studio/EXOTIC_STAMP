@@ -15,6 +15,7 @@ import metro.ExoticStamp.modules.reward.infrastructure.repository.RewardReposito
 import metro.ExoticStamp.modules.reward.infrastructure.repository.UserRewardRepositoryAdapter;
 import metro.ExoticStamp.modules.reward.infrastructure.repository.UserStampLineCountAdapter;
 import metro.ExoticStamp.modules.reward.infrastructure.repository.VoucherPoolRepositoryAdapter;
+import metro.ExoticStamp.modules.reward.domain.service.MilestoneDomainService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -220,6 +221,11 @@ class RewardStampCollectedFlowIT {
         @Bean
         io.micrometer.core.instrument.MeterRegistry meterRegistry() {
             return new io.micrometer.core.instrument.simple.SimpleMeterRegistry();
+        }
+
+        @Bean
+        MilestoneDomainService milestoneDomainService() {
+            return new MilestoneDomainService();
         }
     }
 }

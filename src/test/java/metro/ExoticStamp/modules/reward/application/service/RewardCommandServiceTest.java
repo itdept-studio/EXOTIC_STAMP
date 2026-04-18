@@ -16,6 +16,7 @@ import metro.ExoticStamp.modules.reward.domain.repository.MilestoneRepository;
 import metro.ExoticStamp.modules.reward.domain.repository.RewardRepository;
 import metro.ExoticStamp.modules.reward.domain.repository.UserRewardRepository;
 import metro.ExoticStamp.modules.reward.domain.repository.VoucherPoolRepository;
+import metro.ExoticStamp.modules.reward.domain.service.MilestoneDomainService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -74,7 +75,8 @@ class RewardCommandServiceTest {
                 rewardCachePort,
                 eventPublisher,
                 clock,
-                new SimpleMeterRegistry()
+                new SimpleMeterRegistry(),
+                new MilestoneDomainService()
         );
     }
 
@@ -100,6 +102,26 @@ class RewardCommandServiceTest {
                 .build();
         when(userRewardRepository.findByUserIdAndId(userId, id)).thenReturn(Optional.of(ur));
         assertThrows(RewardNotRedeemableException.class, () -> service.redeemVoucher(userId, id));
+    }
+
+    @Test
+    void redeemVoucher_expiredIssued_markExpiredAndThrows() {
+        UUID userId = UUID.randomUUID();
+        UUID id = UUID.randomUUID();
+        UserReward ur = UserReward.builder()
+                .id(id)
+                .userId(userId)
+                .rewardId(UUID.randomUUID())
+                .milestoneId(UUID.randomUUID())
+                .issuedAt(LocalDateTime.now(clock).minusDays(10))
+                .expiresAt(LocalDateTime.now(clock).minusMinutes(1))
+                .status(RewardStatus.ISSUED)
+                .build();
+        when(userRewardRepository.findByUserIdAndId(userId, id)).thenReturn(Optional.of(ur));
+
+        assertThrows(RewardNotRedeemableException.class, () -> service.redeemVoucher(userId, id));
+        assertEquals(RewardStatus.EXPIRED, ur.getStatus());
+        verify(userRewardRepository).save(ur);
     }
 
     @Test

@@ -15,21 +15,59 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class RewardStampCollectedDedupRedisRepository implements RewardStampCollectedDedupPort {
 
-    private static final String PREFIX = "reward:dedup:";
+    private static final String DONE_PREFIX = "reward:dedup:done:";
+    private static final String LOCK_PREFIX = "reward:dedup:lock:";
 
     private final RedisTemplate<String, Object> redisTemplate;
     private final RewardProperties rewardProperties;
 
     @Override
-    public boolean claimFirstProcessing(UUID eventId) {
+    public boolean isProcessed(UUID eventId) {
         try {
-            String key = PREFIX + eventId;
-            Duration ttl = rewardProperties.getStampCollectedEventDedupTtl();
-            Boolean first = redisTemplate.opsForValue().setIfAbsent(key, "1", ttl);
-            return Boolean.TRUE.equals(first);
+            Boolean exists = redisTemplate.hasKey(doneKey(eventId));
+            return Boolean.TRUE.equals(exists);
         } catch (Exception e) {
-            log.warn("[Reward] stamp collected dedup unavailable eventId={}: {}", eventId, e.getMessage());
+            log.warn("[Reward] dedup check unavailable eventId={}: {}", eventId, e.getMessage());
+            return false;
+        }
+    }
+
+    @Override
+    public boolean acquireProcessingLock(UUID eventId) {
+        try {
+            Duration ttl = rewardProperties.getStampCollectedEventProcessingLockTtl();
+            Boolean acquired = redisTemplate.opsForValue().setIfAbsent(lockKey(eventId), "1", ttl);
+            return Boolean.TRUE.equals(acquired);
+        } catch (Exception e) {
+            log.warn("[Reward] processing lock unavailable eventId={}: {}", eventId, e.getMessage());
             return true;
         }
+    }
+
+    @Override
+    public void markProcessed(UUID eventId) {
+        try {
+            Duration ttl = rewardProperties.getStampCollectedEventDedupTtl();
+            redisTemplate.opsForValue().set(doneKey(eventId), "1", ttl);
+        } catch (Exception e) {
+            log.warn("[Reward] mark processed failed eventId={}: {}", eventId, e.getMessage());
+        }
+    }
+
+    @Override
+    public void releaseProcessingLock(UUID eventId) {
+        try {
+            redisTemplate.delete(lockKey(eventId));
+        } catch (Exception e) {
+            log.warn("[Reward] release lock failed eventId={}: {}", eventId, e.getMessage());
+        }
+    }
+
+    private static String doneKey(UUID eventId) {
+        return DONE_PREFIX + eventId;
+    }
+
+    private static String lockKey(UUID eventId) {
+        return LOCK_PREFIX + eventId;
     }
 }

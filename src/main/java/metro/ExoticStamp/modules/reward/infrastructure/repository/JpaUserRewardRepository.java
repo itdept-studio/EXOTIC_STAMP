@@ -1,6 +1,7 @@
 package metro.ExoticStamp.modules.reward.infrastructure.repository;
 
 import metro.ExoticStamp.modules.reward.domain.model.UserReward;
+import metro.ExoticStamp.modules.reward.domain.model.RewardStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -23,6 +24,8 @@ public interface JpaUserRewardRepository extends JpaRepository<UserReward, UUID>
     Set<UUID> findDistinctMilestoneIdsByUserId(@Param("userId") UUID userId);
 
     Page<UserReward> findByUserIdOrderByIssuedAtDesc(UUID userId, Pageable pageable);
+
+    Page<UserReward> findByUserIdAndStatusOrderByIssuedAtDesc(UUID userId, RewardStatus status, Pageable pageable);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """

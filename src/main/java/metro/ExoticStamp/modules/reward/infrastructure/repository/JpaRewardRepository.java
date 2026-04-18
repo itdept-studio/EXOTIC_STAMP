@@ -10,12 +10,15 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
 
 public interface JpaRewardRepository extends JpaRepository<Reward, UUID> {
 
     Optional<Reward> findByMilestoneIdAndActiveTrue(UUID milestoneId);
 
     Page<Reward> findByActive(boolean active, Pageable pageable);
+
+    List<Reward> findByIdIn(Iterable<UUID> rewardIds);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """

@@ -80,6 +80,9 @@ reward:
   max-page-size: 50
   user-reward-cache-ttl: 30m
   stamp-collected-event-dedup-ttl: 48h
+  stamp-collected-event-processing-lock-ttl: 2m
+  stamp-collected-event-max-attempts: 3
+  stamp-collected-event-retry-backoff: 200ms
   expiry-cron: "0 0 2 * * *"
 
 storage:

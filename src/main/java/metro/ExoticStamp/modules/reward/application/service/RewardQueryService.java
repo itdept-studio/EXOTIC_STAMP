@@ -37,14 +37,18 @@ public class RewardQueryService {
     private final RewardAppMapper rewardAppMapper;
     private final RewardProperties rewardProperties;
 
-    public PageResponse<UserRewardView> getMyRewards(UUID userId, int page, int size) {
+    public PageResponse<UserRewardView> getMyRewards(UUID userId, RewardStatus status, int page, int size) {
         int p = Math.max(0, page);
         int s = normalizeSize(size);
-        Optional<PageResponse<UserRewardView>> cached = rewardCachePort.getUserRewardList(userId, p, s);
-        if (cached.isPresent()) {
-            return cached.get();
+        if (status == null) {
+            Optional<PageResponse<UserRewardView>> cached = rewardCachePort.getUserRewardList(userId, p, s);
+            if (cached.isPresent()) {
+                return cached.get();
+            }
         }
-        PagedSlice<UserReward> slice = userRewardRepository.findByUserIdOrderByIssuedAtDesc(userId, p, s);
+        PagedSlice<UserReward> slice = status == null
+                ? userRewardRepository.findByUserIdOrderByIssuedAtDesc(userId, p, s)
+                : userRewardRepository.findByUserIdAndStatusOrderByIssuedAtDesc(userId, status, p, s);
         Map<UUID, Reward> rewardMap = loadRewards(slice.content());
         List<UserRewardView> content = slice.content().stream()
                 .map(ur -> rewardAppMapper.toUserRewardView(ur, rewardMap.get(ur.getRewardId()), null))
@@ -56,7 +60,9 @@ public class RewardQueryService {
                 slice.page(),
                 slice.size()
         );
-        rewardCachePort.putUserRewardList(userId, p, s, res);
+        if (status == null) {
+            rewardCachePort.putUserRewardList(userId, p, s, res);
+        }
         return res;
     }
 
@@ -83,10 +89,11 @@ public class RewardQueryService {
 
     private Map<UUID, Reward> loadRewards(List<UserReward> list) {
         Set<UUID> ids = list.stream().map(UserReward::getRewardId).collect(Collectors.toSet());
-        Map<UUID, Reward> map = new HashMap<>();
-        for (UUID id : ids) {
-            rewardRepository.findById(id).ifPresent(r -> map.put(id, r));
+        if (ids.isEmpty()) {
+            return Map.of();
         }
+        Map<UUID, Reward> map = new HashMap<>();
+        rewardRepository.findAllByIds(ids).forEach(r -> map.put(r.getId(), r));
         return map;
     }
 
