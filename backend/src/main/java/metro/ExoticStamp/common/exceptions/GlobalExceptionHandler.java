@@ -38,18 +38,6 @@ import metro.ExoticStamp.modules.rbac.domain.exception.RoleCodeAlreadyExistsExce
 import metro.ExoticStamp.modules.rbac.domain.exception.RoleNotFoundException;
 import metro.ExoticStamp.modules.user.domain.exception.UserFieldAlreadyTakenException;
 import metro.ExoticStamp.modules.user.domain.exception.UserNotFoundException;
-import metro.ExoticStamp.modules.reward.domain.exception.MilestoneAlreadyActiveException;
-import metro.ExoticStamp.modules.reward.domain.exception.MilestoneAlreadyInactiveException;
-import metro.ExoticStamp.modules.reward.domain.exception.MilestoneNotFoundException;
-import metro.ExoticStamp.modules.reward.domain.exception.PartnerAlreadyActiveException;
-import metro.ExoticStamp.modules.reward.domain.exception.PartnerAlreadyInactiveException;
-import metro.ExoticStamp.modules.reward.domain.exception.PartnerNotFoundException;
-import metro.ExoticStamp.modules.reward.domain.exception.RewardAlreadyActiveException;
-import metro.ExoticStamp.modules.reward.domain.exception.RewardAlreadyInactiveException;
-import metro.ExoticStamp.modules.reward.domain.exception.RewardAlreadyIssuedException;
-import metro.ExoticStamp.modules.reward.domain.exception.RewardNotFoundException;
-import metro.ExoticStamp.modules.reward.domain.exception.RewardNotRedeemableException;
-import metro.ExoticStamp.modules.reward.domain.exception.VoucherCodeExhaustedException;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.persistence.RollbackException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -424,78 +412,6 @@ public class GlobalExceptionHandler {
     private ResponseEntity<ErrorResponse> build(int status, String code, String message, HttpServletRequest req) {
         return ResponseEntity.status(status)
                 .body(ErrorResponse.of(code, message, status, req.getRequestURI()));
-    }
-
-    @ExceptionHandler(PartnerNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handlePartnerNotFound(PartnerNotFoundException ex, HttpServletRequest req) {
-        log.warn("[404] {}", ex.getMessage());
-        return build(404, "PARTNER_NOT_FOUND", ex.getMessage(), req);
-    }
-
-    @ExceptionHandler(MilestoneNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleMilestoneNotFound(MilestoneNotFoundException ex, HttpServletRequest req) {
-        log.warn("[404] {}", ex.getMessage());
-        return build(404, "MILESTONE_NOT_FOUND", ex.getMessage(), req);
-    }
-
-    @ExceptionHandler(RewardNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleRewardNotFound(RewardNotFoundException ex, HttpServletRequest req) {
-        log.warn("[404] {}", ex.getMessage());
-        return build(404, "REWARD_NOT_FOUND", ex.getMessage(), req);
-    }
-
-    @ExceptionHandler(RewardNotRedeemableException.class)
-    public ResponseEntity<ErrorResponse> handleRewardNotRedeemable(RewardNotRedeemableException ex, HttpServletRequest req) {
-        log.warn("[422] {}", ex.getMessage());
-        return build(422, "REWARD_NOT_REDEEMABLE", ex.getMessage(), req);
-    }
-
-    @ExceptionHandler(VoucherCodeExhaustedException.class)
-    public ResponseEntity<ErrorResponse> handleVoucherExhausted(VoucherCodeExhaustedException ex, HttpServletRequest req) {
-        log.warn("[422] {}", ex.getMessage());
-        return build(422, "VOUCHER_EXHAUSTED", ex.getMessage(), req);
-    }
-
-    @ExceptionHandler(RewardAlreadyIssuedException.class)
-    public ResponseEntity<ErrorResponse> handleRewardAlreadyIssued(RewardAlreadyIssuedException ex, HttpServletRequest req) {
-        log.warn("[409] {}", ex.getMessage());
-        return build(409, "REWARD_ALREADY_ISSUED", ex.getMessage(), req);
-    }
-
-    @ExceptionHandler(MilestoneAlreadyActiveException.class)
-    public ResponseEntity<ErrorResponse> handleMilestoneAlreadyActive(MilestoneAlreadyActiveException ex, HttpServletRequest req) {
-        log.warn("[409] {}", ex.getMessage());
-        return build(409, "MILESTONE_ALREADY_ACTIVE", ex.getMessage(), req);
-    }
-
-    @ExceptionHandler(MilestoneAlreadyInactiveException.class)
-    public ResponseEntity<ErrorResponse> handleMilestoneAlreadyInactive(MilestoneAlreadyInactiveException ex, HttpServletRequest req) {
-        log.warn("[409] {}", ex.getMessage());
-        return build(409, "MILESTONE_ALREADY_INACTIVE", ex.getMessage(), req);
-    }
-
-    @ExceptionHandler(PartnerAlreadyActiveException.class)
-    public ResponseEntity<ErrorResponse> handlePartnerAlreadyActive(PartnerAlreadyActiveException ex, HttpServletRequest req) {
-        log.warn("[409] {}", ex.getMessage());
-        return build(409, "PARTNER_ALREADY_ACTIVE", ex.getMessage(), req);
-    }
-
-    @ExceptionHandler(PartnerAlreadyInactiveException.class)
-    public ResponseEntity<ErrorResponse> handlePartnerAlreadyInactive(PartnerAlreadyInactiveException ex, HttpServletRequest req) {
-        log.warn("[409] {}", ex.getMessage());
-        return build(409, "PARTNER_ALREADY_INACTIVE", ex.getMessage(), req);
-    }
-
-    @ExceptionHandler(RewardAlreadyActiveException.class)
-    public ResponseEntity<ErrorResponse> handleRewardAlreadyActive(RewardAlreadyActiveException ex, HttpServletRequest req) {
-        log.warn("[409] {}", ex.getMessage());
-        return build(409, "REWARD_ALREADY_ACTIVE", ex.getMessage(), req);
-    }
-
-    @ExceptionHandler(RewardAlreadyInactiveException.class)
-    public ResponseEntity<ErrorResponse> handleRewardAlreadyInactive(RewardAlreadyInactiveException ex, HttpServletRequest req) {
-        log.warn("[409] {}", ex.getMessage());
-        return build(409, "REWARD_ALREADY_INACTIVE", ex.getMessage(), req);
     }
 
     // 422 — business rule violation

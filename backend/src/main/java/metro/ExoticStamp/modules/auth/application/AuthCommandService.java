@@ -1,7 +1,6 @@
 package metro.ExoticStamp.modules.auth.application;
 
 import metro.ExoticStamp.common.exceptions.DomainRuleViolationException;
-import metro.ExoticStamp.infra.mail.MailProperties;
 import metro.ExoticStamp.infra.mail.MailService;
 import metro.ExoticStamp.modules.auth.application.command.ForgotPasswordCommand;
 import metro.ExoticStamp.modules.auth.application.command.LoginCommand;
@@ -10,7 +9,7 @@ import metro.ExoticStamp.modules.auth.application.command.RegisterCommand;
 import metro.ExoticStamp.modules.auth.application.command.ResendOtpCommand;
 import metro.ExoticStamp.modules.auth.application.command.ResendVerificationCommand;
 import metro.ExoticStamp.modules.auth.application.command.ResetPasswordCommand;
-import metro.ExoticStamp.modules.auth.application.command.VerifyTokenCommand;
+import metro.ExoticStamp.modules.auth.application.command.VerifyEmailOtpCommand;
 import metro.ExoticStamp.modules.auth.domain.exception.InvalidCredentialsException;
 import metro.ExoticStamp.modules.auth.domain.exception.InvalidTokenException;
 import metro.ExoticStamp.modules.auth.domain.exception.OtpMaxAttemptsExceededException;
@@ -28,9 +27,7 @@ import metro.ExoticStamp.modules.auth.infrastructure.jwt.JwtProperties;
 import metro.ExoticStamp.modules.auth.infrastructure.redis.AccessTokenRevocationRedisRepository;
 import metro.ExoticStamp.modules.auth.infrastructure.redis.OtpRepository;
 import metro.ExoticStamp.modules.auth.infrastructure.redis.RefreshTokenRedisRepository;
-import metro.ExoticStamp.modules.auth.infrastructure.redis.VerifyTokenRepository;
 import metro.ExoticStamp.modules.rbac.application.RoleQueryService;
-import metro.ExoticStamp.modules.user.domain.event.UserCreatedEvent;
 import metro.ExoticStamp.modules.user.domain.exception.UserNotFoundException;
 import metro.ExoticStamp.modules.user.domain.model.User;
 import metro.ExoticStamp.modules.user.domain.model.UserStatus;
@@ -40,7 +37,6 @@ import metro.ExoticStamp.modules.auth.presentation.dto.response.AuthResponse;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -78,11 +74,8 @@ public class AuthCommandService {
     private final OtpRepository otpRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuditLogService auditLogService;
-    private final ApplicationEventPublisher eventPublisher;
     private final JwtProperties jwtProperties;
-    private final VerifyTokenRepository verifyTokenRepository;
     private final MailService mailService;
-    private final MailProperties mailProperties;
 
     private static final int RESEND_COOLDOWN_FALLBACK_SECONDS = 120;
 
@@ -160,30 +153,39 @@ public class AuthCommandService {
 
         User saved = userRepository.save(user);
 
-        String token = UUID.randomUUID().toString();
-        verifyTokenRepository.saveToken(token, saved.getId());
+        otpRepository.delete(saved.getEmail(), OtpType.EMAIL_VERIFY);
+        String otp = generateOtp();
+        otpRepository.save(saved.getEmail(), OtpType.EMAIL_VERIFY, otp);
 
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                eventPublisher.publishEvent(new UserCreatedEvent(saved, token));
-            }
-        });
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    mailService.sendEmailVerificationOtp(saved.getEmail(), otp);
+                }
+            });
+        } else {
+            mailService.sendEmailVerificationOtp(saved.getEmail(), otp);
+        }
     }
 
     @Transactional
-    public void verifyEmail(VerifyTokenCommand cmd) {
-        UUID userId = verifyTokenRepository.findUserIdByToken(cmd.getToken())
-                .orElseThrow(() -> new InvalidTokenException("Verification link is invalid or has expired"));
+    public void verifyEmail(VerifyEmailOtpCommand cmd) {
+        String otp = otpRepository.find(cmd.getEmail(), OtpType.EMAIL_VERIFY)
+                .orElseThrow(OtpExpiredException::new);
 
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException(userId));
+        if (!otp.equals(cmd.getOtp())) {
+            throw new OtpInvalidException();
+        }
+
+        User user = userRepository.findByEmail(cmd.getEmail())
+                .orElseThrow(() -> new UserNotFoundException("email", cmd.getEmail()));
 
         user.setStatus(UserStatus.ACTIVE);
         user.setVerifiedAt(LocalDateTime.now());
         userRepository.save(user);
 
-        verifyTokenRepository.deleteToken(cmd.getToken());
+        otpRepository.delete(cmd.getEmail(), OtpType.EMAIL_VERIFY);
     }
 
     @Transactional
@@ -195,20 +197,26 @@ public class AuthCommandService {
             throw new DomainRuleViolationException("Account is already verified");
         }
 
-        if (verifyTokenRepository.isOnCooldown(cmd.getEmail())) {
-            long secondsLeft = verifyTokenRepository.getCooldownTtlSeconds(cmd.getEmail());
+        if (otpRepository.isOnCooldown(cmd.getEmail(), OtpType.EMAIL_VERIFY)) {
+            long secondsLeft = otpRepository.getCooldownTtlSeconds(cmd.getEmail(), OtpType.EMAIL_VERIFY);
             if (secondsLeft <= 0) {
                 secondsLeft = RESEND_COOLDOWN_FALLBACK_SECONDS;
             }
             throw new ResendCooldownException(secondsLeft);
         }
 
-        String token = UUID.randomUUID().toString();
-        verifyTokenRepository.saveToken(token, user.getId());
-        verifyTokenRepository.saveCooldown(cmd.getEmail());
+        if (otpRepository.isMaxAttemptsExceeded(cmd.getEmail(), OtpType.EMAIL_VERIFY)) {
+            throw new OtpMaxAttemptsExceededException(OTP_MAX_ATTEMPTS);
+        }
 
-        String verifyUrl = mailProperties.getFrontendUrl() + "/verify-email?token=" + token;
-        mailService.sendVerifyEmail(cmd.getEmail(), user.getUsername(), verifyUrl);
+        otpRepository.delete(cmd.getEmail(), OtpType.EMAIL_VERIFY);
+
+        String otp = generateOtp();
+        otpRepository.save(cmd.getEmail(), OtpType.EMAIL_VERIFY, otp);
+        otpRepository.saveCooldown(cmd.getEmail(), OtpType.EMAIL_VERIFY);
+        otpRepository.incrementAttempts(cmd.getEmail(), OtpType.EMAIL_VERIFY);
+
+        mailService.sendEmailVerificationOtp(cmd.getEmail(), otp);
     }
 
     @Transactional

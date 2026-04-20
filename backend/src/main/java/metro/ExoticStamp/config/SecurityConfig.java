@@ -24,6 +24,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.List;
+
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
@@ -101,9 +103,12 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.addAllowedOrigin("http://localhost:3000");
-        config.addAllowedOrigin("http://localhost:5173");
-        config.addAllowedOrigin("https://report.facewashfox.com");
+        config.setAllowedOriginPatterns(List.of(
+                "http://localhost:*",
+                "http://192.168.1.*:*",
+                "https://report.facewashfox.com",
+                "https://bf02-2402-800-6371-ed62-5018-ad12-bb7a-8bba.ngrok-free.app"
+        ));
         config.addAllowedHeader("*");
 
         config.addAllowedMethod(HttpMethod.GET.name());

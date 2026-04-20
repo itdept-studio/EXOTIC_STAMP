@@ -47,6 +47,10 @@ import org.springframework.context.annotation.Configuration;
                         description = "Local development server"
                 ),
                 @Server(
+                        url = "http://192.168.1.218:8080",
+                        description = "Local Team Server"
+                ),
+                @Server(
                         url = "https://backend.facewashfox.com",
                         description = "Production Server"
                 )
