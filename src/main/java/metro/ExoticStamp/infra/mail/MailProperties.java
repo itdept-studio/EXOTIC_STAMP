@@ -15,7 +15,4 @@ public class MailProperties {
 
     @Value("${application.mail.logo-url}")
     private String logoUrl;
-
-    @Value("${application.frontend.dev}")
-    private String frontendUrl;
 }

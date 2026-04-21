@@ -72,7 +72,7 @@ All errors are returned as:
 
 - Endpoint: `POST /api/v1/auth/register`
 - Auth required: No
-- Purpose: Create a new account in `PENDING_VERIFIED` state and trigger verification email event.
+- Purpose: Create a new account in `PENDING_VERIFIED` state and send a **6-digit email verification OTP**.
 
 Request body:
 ```json
@@ -106,17 +106,19 @@ Possible errors:
 UI notes:
 - After success, navigate to "Check your email" screen.
 - Account cannot login until verified (`USER_NOT_ACTIVE` on login).
+- User must enter the OTP from email into the app to complete verification.
 
 ## 3.2 Verify Email
 
 - Endpoint: `POST /api/v1/auth/verify-email`
 - Auth required: No
-- Purpose: Activate account using verification token from email link.
+- Purpose: Activate account using OTP sent to email.
 
 Request body:
 ```json
 {
-  "token": "uuid-or-random-token"
+  "email": "john@example.com",
+  "otp": "123456"
 }
 ```
 
@@ -133,7 +135,9 @@ Success:
 
 Possible errors:
 - `400 INVALID_INPUT`
-- `401 INVALID_TOKEN` (invalid/expired token)
+- `400 OTP_EXPIRED` (expired or missing OTP)
+- `400 OTP_INVALID` (OTP does not match)
+- `404 USER_NOT_FOUND` (email not found)
 
 UI notes:
 - On success, show "Email verified" and route user to login.
@@ -142,7 +146,7 @@ UI notes:
 
 - Endpoint: `POST /api/v1/auth/resend-verification`
 - Auth required: No
-- Purpose: Resend account verification email.
+- Purpose: Resend account verification OTP email (cooldown + max attempts protected).
 
 Request body:
 ```json
@@ -167,6 +171,7 @@ Possible errors:
 - `404 USER_NOT_FOUND`
 - `422 DOMAIN_RULE_VIOLATION` (already verified)
 - `429 RESEND_COOLDOWN` (must wait, currently cooldown ~2 minutes)
+- `429 OTP_MAX_ATTEMPTS_EXCEEDED` (max 5 resend attempts in rolling ~1 hour window)
 
 UI notes:
 - If `RESEND_COOLDOWN`, parse remaining seconds from `message` and show countdown.
@@ -388,8 +393,8 @@ UI notes:
 ## 4.1 Registration and Verification
 1. Call `register`.
 2. Show "check email" screen.
-3. User opens email link and app/web gets token.
-4. Call `verify-email`.
+3. User enters OTP from email.
+4. Call `verify-email` with `{ email, otp }`.
 5. Route to login.
 
 ## 4.2 Login and Session Lifecycle

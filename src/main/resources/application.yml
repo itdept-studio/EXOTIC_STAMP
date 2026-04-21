@@ -20,10 +20,6 @@ spring:
     password: ${MAIL_PASSWORD}
 
 application:
-  frontend:
-    dev: http://localhost:3000
-    prod: frontend url
-
   backend:
     prod: backend url
 
