@@ -32,3 +32,6 @@ build/
 ### VS Code ###
 .vscode/
 .gitnexus
+
+### Do not push application dev and prod to Github ###
+application-*.yml

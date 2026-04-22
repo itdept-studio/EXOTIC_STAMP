@@ -1,6 +1,7 @@
 package metro.ExoticStamp.infra.mail;
 
 import metro.ExoticStamp.infra.mail.queue.MailQueueService;
+import metro.ExoticStamp.infra.mail.template.EmailVerificationOtpTemplate;
 import metro.ExoticStamp.infra.mail.template.OtpEmailTemplate;
 import metro.ExoticStamp.infra.mail.template.VerifyEmailTemplate;
 import lombok.RequiredArgsConstructor;
@@ -22,5 +23,10 @@ public class MailService {
     public void sendOtpEmail(String toEmail, String otp) {
         String body = OtpEmailTemplate.build(otp, mailProperties.getLogoUrl());
         mailQueueService.enqueueHtmlMail(toEmail, MailSubjectConstants.OTP_VERIFICATION_CODE, body);
+    }
+
+    public void sendEmailVerificationOtp(String toEmail, String otp) {
+        String body = EmailVerificationOtpTemplate.build(otp, mailProperties.getLogoUrl());
+        mailQueueService.enqueueHtmlMail(toEmail, MailSubjectConstants.EMAIL_VERIFICATION_CODE, body);
     }
 }

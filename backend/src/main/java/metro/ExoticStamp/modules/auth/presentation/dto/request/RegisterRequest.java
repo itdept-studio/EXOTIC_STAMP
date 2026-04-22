@@ -18,14 +18,14 @@ public class RegisterRequest {
     private String username;
 
     @NotBlank
-    @Email
+    @Email(message = "Invalid email address")
     private String email;
 
     @NotBlank
     private String phoneNumber;
 
     @NotBlank
-    @Size(min = 8)
+    @Size(min = 8, max = 50)
     private String password;
 
     public String getFirstname() {
