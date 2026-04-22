@@ -11,7 +11,7 @@ import metro.ExoticStamp.modules.auth.application.command.ResendOtpCommand;
 import metro.ExoticStamp.modules.auth.application.command.ResetPasswordCommand;
 import metro.ExoticStamp.modules.auth.application.command.RegisterCommand;
 import metro.ExoticStamp.modules.auth.application.command.ResendVerificationCommand;
-import metro.ExoticStamp.modules.auth.application.command.VerifyTokenCommand;
+import metro.ExoticStamp.modules.auth.application.command.VerifyEmailOtpCommand;
 import metro.ExoticStamp.modules.auth.application.mapper.AuthAppMapper;
 import metro.ExoticStamp.common.response.ApiResponse;
 import metro.ExoticStamp.modules.auth.domain.exception.InvalidTokenException;
@@ -24,7 +24,7 @@ import metro.ExoticStamp.modules.auth.presentation.dto.request.RegisterRequest;
 import metro.ExoticStamp.modules.auth.presentation.dto.request.ResetPasswordRequest;
 import metro.ExoticStamp.modules.auth.presentation.dto.request.ResendOtpRequest;
 import metro.ExoticStamp.modules.auth.presentation.dto.request.ResendVerificationRequest;
-import metro.ExoticStamp.modules.auth.presentation.dto.request.VerifyTokenRequest;
+import metro.ExoticStamp.modules.auth.presentation.dto.request.VerifyEmailOtpRequest;
 import metro.ExoticStamp.modules.auth.presentation.dto.response.AuthResponse;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -93,9 +93,9 @@ public class AuthController {
     }
 
     @PostMapping("/verify-email")
-    @Operation(summary = "Verify email using verification token")
-    public ResponseEntity<ApiResponse<Void>> verifyEmail(@Valid @RequestBody VerifyTokenRequest req) {
-        commandService.verifyEmail(new VerifyTokenCommand(req.getToken()));
+    @Operation(summary = "Verify email using OTP")
+    public ResponseEntity<ApiResponse<Void>> verifyEmail(@Valid @RequestBody VerifyEmailOtpRequest req) {
+        commandService.verifyEmail(new VerifyEmailOtpCommand(req.getEmail(), req.getOtp()));
         return ResponseEntity.ok(ApiResponse.ok("Email verified successfully.", null));
     }
 

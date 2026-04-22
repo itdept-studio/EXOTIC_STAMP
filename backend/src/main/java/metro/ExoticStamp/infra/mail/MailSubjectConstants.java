@@ -7,6 +7,7 @@ public final class MailSubjectConstants {
 
     public static final String VERIFY_ACCOUNT = "Verify your MetricsX account";
     public static final String OTP_VERIFICATION_CODE = "Your MetricsX verification code";
+    public static final String EMAIL_VERIFICATION_CODE = "Your MetricsX email verification code";
 
     private MailSubjectConstants() {
     }

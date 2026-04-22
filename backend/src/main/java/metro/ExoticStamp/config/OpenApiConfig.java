@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.servers.Server;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 
 @OpenAPIDefinition(
@@ -45,6 +46,10 @@ import org.springframework.context.annotation.Configuration;
                 @Server(
                         url = "http://localhost:8080",
                         description = "Local development server"
+                ),
+                @Server(
+                        url = "${application.backend.testing}",
+                        description = "Testing server"
                 ),
                 @Server(
                         url = "https://backend.facewashfox.com",
