@@ -32,3 +32,13 @@ build/
 ### VS Code ###
 .vscode/
 .gitnexus
+
+### Local Development ###
+.m2/
+.agents/
+.claude/
+.cursor/
+logs/
+.tmp_docx/
+.tmp_docx.zip
+.tmp_docx_text.txt
