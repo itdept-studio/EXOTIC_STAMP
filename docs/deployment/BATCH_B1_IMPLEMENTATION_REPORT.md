@@ -185,17 +185,19 @@ Unchanged: trivial launcher `ExoticStampApplication` only (documented in JaCoCo 
 
 ## 21. GitHub Actions run evidence
 
-**Not proven green.** Manual steps:
+| Item | Value |
+|------|-------|
+| Branch pushed | `chore/batch-b1-ci-closure` → `exotic` (`EXOTIC_STAMP`) |
+| Commit SHA | `efcff8f54b02be21b4b38cc65db052fd8bc05b7b` |
+| PR link (suggested) | https://github.com/itdept-studio/EXOTIC_STAMP/pull/new/chore/batch-b1-ci-closure |
+| Workflow observation | `gh` CLI **not installed** on this machine — run status **not** verified here |
+| Expected CI outcome | Tests should pass; **JaCoCo check will fail** (same as local `-Pci`) → not a green gate until coverage rises |
 
 ```bash
-git checkout -b chore/batch-b1-ci-closure
-git add pom.xml .github/workflows/backend-ci.yml scripts/ci src/test docs/deployment
-git commit -m "ci: close Batch B.1 Testcontainers and Failsafe proof"
-git push -u exotic HEAD
-gh run list --workflow=backend-ci.yml --repo itdept-studio/EXOTIC_STAMP
+# Observe run (install GitHub CLI first):
+gh run list --workflow=backend-ci.yml --repo itdept-studio/EXOTIC_STAMP --branch chore/batch-b1-ci-closure
+gh run watch --repo itdept-studio/EXOTIC_STAMP
 ```
-
-Nested backend remote used by the team: `exotic` → `https://github.com/itdept-studio/EXOTIC_STAMP.git`.
 
 ---
 
