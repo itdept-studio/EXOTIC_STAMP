@@ -1,0 +1,12 @@
+metro.ExoticStamp.config.CiDockerAvailabilityIT
+metro.ExoticStamp.config.CiDatasourceUrlGuardIT
+metro.ExoticStamp.ExoticStampApplicationIT
+metro.ExoticStamp.config.ProdSeederExclusionIT
+metro.ExoticStamp.config.ProdSwaggerDisabledIT
+metro.ExoticStamp.config.UploadSecurityIT
+metro.ExoticStamp.infrastructure.FlywayV16MigrationIT
+metro.ExoticStamp.modules.collection.infrastructure.CollectionPersistenceIT
+metro.ExoticStamp.modules.collection.infrastructure.UserStampCacheIntegrationIT
+metro.ExoticStamp.modules.reward.infrastructure.RewardStampCollectedFlowIT
+metro.ExoticStamp.modules.reward.infrastructure.RewardConcurrencyIT
+metro.ExoticStamp.infra.security.ratelimit.RedisLuaRateLimiterIT
